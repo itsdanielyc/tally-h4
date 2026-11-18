@@ -1,7 +1,7 @@
-import type { ElectronBridge } from "../../electron/bridge";
+import type { LedgerApi } from "../../contracts/ledger";
 
 declare global {
   interface Window {
-    electronBridge?: ElectronBridge;
+    electronBridge?: LedgerApi;
   }
 }

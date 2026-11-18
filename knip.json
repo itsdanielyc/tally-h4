@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["index.html", "tests/**/*.{test,spec}.ts", "scripts/*.mjs"],
-  "project": ["src/**/*.ts", "electron/**/*.ts", "contracts/**/*.ts", "tests/**/*.ts", "scripts/*.mjs"],
-  "ignore": [".agents/**", ".claude/**"]
+  "project": ["src/**/*.ts", "electron/**/*.ts", "application/**/*.ts", "domain/**/*.ts", "contracts/**/*.ts", "tests/**/*.ts", "scripts/*.mjs"],
+  "ignore": [".agents/**", ".claude/**", ".keel-local/**"]
 }

@@ -1,41 +1,75 @@
-import { backend } from "./api";
+import type { Ledger } from "../contracts/ledger";
+import { connectBackend, type Backend } from "./api";
+import { element, required } from "./dom";
+import { renderSettings } from "./settings-view";
+import { renderTransactions } from "./transactions-view";
+import type { ViewContext } from "./view-context";
 
-// A backend call that fails must be seen: the real-shell suite fails on any
-// console error, so a rejected call cannot pass unnoticed.
-function reportError(error: unknown): void {
-  console.error(error);
-}
+const renderScreen = { transactions: renderTransactions, settings: renderSettings };
+type Screen = keyof typeof renderScreen;
 
-window.addEventListener("DOMContentLoaded", () => {
-  const input = document.querySelector<HTMLInputElement>("#greet-input");
-  const msg = document.querySelector<HTMLElement>("#greet-msg");
-  const badge = document.querySelector<HTMLElement>("#backend-badge");
+class App {
+  private readonly view = required(document, "#view");
+  private readonly notice = required(document, "#notice");
+  private readonly error = required(document, "#error");
+  private readonly navigation = document.querySelectorAll<HTMLButtonElement>("nav button[data-screen]");
+  private ledger?: Ledger;
+  private screen: Screen = "transactions";
 
-  if (badge) {
-    badge.textContent = backend.kind === "native" ? "native" : "mock";
-    badge.dataset.kind = backend.kind;
+  constructor(private readonly backend: Backend) {}
+
+  async start(): Promise<void> {
+    const badge = required(document, "#backend-badge");
+    badge.textContent = this.backend.kind;
+    badge.hidden = this.backend.kind === "native";
+    for (const button of this.navigation) {
+      button.addEventListener("click", () => this.navigate(button.dataset.screen));
+    }
+    this.ledger = await this.backend.loadLedger();
+    this.render();
   }
 
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!input || !msg) return;
-    backend
-      .greet(input.value)
-      .then((text) => {
-        msg.textContent = text;
-      })
-      .catch(reportError);
-  });
+  private navigate(screen?: string): void {
+    if (!screen || !Object.hasOwn(renderScreen, screen)) return;
+    this.screen = screen as Screen;
+    this.notice.textContent = "";
+    this.error.textContent = "";
+    this.render();
+  }
 
-  document.querySelector("#clear-btn")?.addEventListener("click", () => {
-    if (msg) msg.textContent = "";
-  });
+  private render(): void {
+    if (!this.ledger) return;
+    for (const button of this.navigation) {
+      if (button.dataset.screen === this.screen) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    }
+    this.view.replaceChildren();
+    const context: ViewContext = {
+      backend: this.backend,
+      ledger: this.ledger,
+      commit: async (operation, message) => {
+        this.ledger = await operation();
+        this.render();
+        this.error.textContent = "";
+        this.notice.textContent = message;
+      },
+      report: (error) => {
+        this.error.textContent = error instanceof Error ? error.message : "The ledger is unavailable.";
+      },
+    };
+    renderScreen[this.screen](this.view, context);
+  }
+}
 
-  backend
-    .platformInfo()
-    .then((info) => {
-      const el = document.querySelector<HTMLElement>("#platform");
-      if (el) el.textContent = `${info.os} / ${info.arch}`;
-    })
-    .catch(reportError);
-});
+function reportStartup(error: unknown): void {
+  const title = element("h1", "Ledger unavailable");
+  title.id = "screen-title";
+  required(document, "#view").replaceChildren(title);
+  required(document, "#error").textContent = error instanceof Error ? error.message : "The ledger could not be opened.";
+}
+
+try {
+  void new App(connectBackend()).start().catch(reportStartup);
+} catch (error) {
+  reportStartup(error);
+}

@@ -1,45 +1,27 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*"
-    />
-    <link rel="stylesheet" href="/src/styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; form-action 'none'; base-uri 'none'">
     <title>Tally</title>
-    <script type="module" src="/src/main.ts" defer></script>
+    <link rel="stylesheet" href="/src/styles.css">
   </head>
-
   <body>
-    <main class="container" data-geo="main">
-      <h1 data-geo="title">Welcome to Electron</h1>
-
-      <div class="row" data-geo="logos">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://www.electronjs.org" target="_blank">
-          <img src="/src/assets/electron.svg" class="logo electron" alt="Electron logo" />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img src="/src/assets/typescript.svg" class="logo typescript" alt="typescript logo" />
-        </a>
-      </div>
-      <p>Click on the Electron logo to learn more about the framework</p>
-
-      <form class="row" id="greet-form" data-geo="form" aria-label="Greet">
-        <input id="greet-input" placeholder="Enter a name..." aria-label="Name" />
-        <button type="submit">Greet</button>
-        <button type="button" id="clear-btn">Clear</button>
-      </form>
-      <p id="greet-msg" data-geo="message" aria-live="polite"></p>
-
-      <footer class="meta" data-geo="meta">
-        <span>backend: <strong id="backend-badge" data-testid="backend-badge">…</strong></span>
-        <span>platform: <span id="platform" data-testid="platform">…</span></span>
-      </footer>
+    <aside class="sidebar" data-geo="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Tally</div>
+      <nav aria-label="Ledger">
+        <button type="button" data-screen="transactions" aria-current="page">Transactions</button>
+        <button type="button" data-screen="settings">Settings</button>
+      </nav>
+      <div class="local"><span class="local-dot" aria-hidden="true"></span><span>On this device</span></div>
+      <span id="backend-badge" data-testid="backend-badge" hidden></span>
+    </aside>
+    <main id="workspace">
+      <section id="view" aria-labelledby="screen-title"></section>
+      <p id="notice" role="status" aria-atomic="true"></p>
+      <p id="error" role="alert" aria-atomic="true"></p>
     </main>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
