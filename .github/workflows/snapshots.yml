@@ -1,107 +1,52 @@
-# Regenerates the per-OS pixel baselines (and the shared ARIA and geometry
-# snapshots) on the runners themselves, then opens a pull request with the
-# result. Baselines are never captured on a developer machine: a Windows
-# laptop cannot produce a macOS baseline, and runner fonts and GPUs differ.
 name: snapshots
-
-on:
-  workflow_dispatch:
-
+on: workflow_dispatch
 permissions:
-  contents: write
-  pull-requests: write
-
+  contents: read
 jobs:
-  capture:
-    name: capture (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-26]
+  apple-silicon-checkpoints:
+    runs-on: macos-26
+    timeout-minutes: 18
+    env:
+      CI: "1"
+      CHECKPOINTS: "7943a1d05ce5db2ffe2decadf82282420fd0cdae 653fc0b4db5196029987826f5d09aa36512c2ef2 fc14beee1c4a4f0f40b3148122418aa10dafe88b"
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Playwright browsers
-        # Ubuntu's apt can stall on a service-restart prompt during
-        # --with-deps; keep it non-interactive and bound each attempt.
-        timeout-minutes: 12
+      - run: npx playwright install chromium
+      - run: node node_modules/electron/install.js
+      - name: Verify each source checkpoint on Apple silicon
         shell: bash
-        env:
-          DEBIAN_FRONTEND: noninteractive
-          NEEDRESTART_MODE: a
         run: |
-          bound=""; command -v timeout >/dev/null && bound="timeout 420"   # macOS has no timeout(1)
-          for attempt in 1 2; do
-            $bound npx playwright install --with-deps chromium && exit 0
-            echo "attempt $attempt failed or stalled; retrying"
+          test "$(uname -m)" = arm64
+          slice=0
+          for commit in $CHECKPOINTS; do
+            slice=$((slice+1))
+            echo "::group::Slice $slice at $commit"
+            git switch --detach "$commit"
+            output="$RUNNER_TEMP/tally-checkpoints/slice-$slice"
+            mkdir -p "$output"
+            git rev-parse HEAD > "$output/commit.txt"
+            npm run test:integration
+            npm run test:ui -- --grep "tier 1|tier 2"
+            npm run test:ui:update
+            npm run test:ui
+            cp tests/ui/__snapshots__/home.spec.ts/home-chromium-darwin.png "$output/"
+            git restore --worktree -- tests/ui/__snapshots__
+            npm run build
+            npm run test:e2e
+            cp artifacts/e2e/darwin-arm64.png "$output/"
+            echo "Slice $slice passed L3–L6"
+            echo "::endgroup::"
           done
-          exit 1
-      - name: Capture baselines
-        env:
-          CI: "1"
-        run: npm run test:ui:update
-      - name: Verify the captured baselines
-        env:
-          CI: "1"
-        run: npm run test:ui
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
-          name: snapshots-${{ matrix.os }}
-          path: tests/ui/__snapshots__
-          retention-days: 3
-
-  propose:
-    name: open pull request
-    needs: [capture]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: snapshots-*
-          path: incoming
-      - name: Merge the three capture sets
-        run: |
-          destination=tests/ui/__snapshots__
-          for pair in ubuntu-latest:linux windows-latest:win32 macos-26:darwin; do
-            source="incoming/snapshots-${pair%:*}"
-            platform="${pair#*:}"
-            while IFS= read -r -d '' file; do
-              target="$destination/${file#"$source/"}"
-              mkdir -p "$(dirname "$target")"
-              cp "$file" "$target"
-            done < <(find "$source" -type f -name "*-$platform.png" -print0)
-          done
-          source=incoming/snapshots-ubuntu-latest
-          while IFS= read -r -d '' file; do
-            target="$destination/${file#"$source/"}"
-            mkdir -p "$(dirname "$target")"
-            cp "$file" "$target"
-          done < <(find "$source" -type f \( -name '*.aria.yml' -o -name '*.geometry.json' \) -print0)
-          git status --short tests/ui/__snapshots__
-      - name: Commit the baselines
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git add tests/ui/__snapshots__
-          if git diff --cached --quiet; then echo "No snapshot changes."; exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update visual snapshots from run ${{ github.run_id }}"
-          if [ "${{ github.ref_name }}" != "main" ]; then
-            # Dispatched on a working branch: land the baselines on that branch,
-            # so the pull request that is already open picks them up.
-            git push origin "HEAD:${{ github.ref_name }}"
-          else
-            branch="snapshots/update-${{ github.run_id }}"
-            git checkout -b "$branch"
-            git push origin "$branch"
-            gh pr create --base main --head "$branch"               --title "Update visual snapshots (run ${{ github.run_id }})"               --body "Baselines captured on ubuntu-latest, windows-latest and macos-26 by the snapshots workflow. Review the images before merging."
-          fi
+          name: apple-silicon-checkpoints
+          path: ${{ runner.temp }}/tally-checkpoints
+          retention-days: 14
