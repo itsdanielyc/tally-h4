@@ -1,6 +1,7 @@
 import type { Ledger, LedgerApi, Transaction } from "../contracts/ledger";
 import { validateCurrency } from "../domain/money";
 import { newestFirst, validateTransaction } from "../domain/transactions";
+import { createImportCommands, type PickCsv } from "./import-commands";
 import { LedgerSession, type LedgerStore } from "./ledger-session";
 
 function view(ledger: Ledger): Ledger {
@@ -20,9 +21,14 @@ function replaceTransaction(ledger: Ledger, transaction: Transaction): Ledger {
 }
 
 /** Builds the API over an injected store, used by native IPC and browser tests. */
-export function createLedgerApi(store: LedgerStore, makeId: () => string = () => crypto.randomUUID()): LedgerApi {
+export function createLedgerApi(
+  store: LedgerStore,
+  makeId: () => string = () => crypto.randomUUID(),
+  pickCsv: PickCsv = async () => null,
+): LedgerApi {
   const session = new LedgerSession(store);
   return {
+    ...createImportCommands(session, pickCsv, view, makeId),
     loadLedger: () => session.read(view),
     saveTransaction: (input) => session.change((ledger) => {
       const fields = validateTransaction(input);

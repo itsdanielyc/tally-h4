@@ -23,4 +23,7 @@ export function registerLedgerIpc(ledger: LedgerApi, rendererUrl: string): void 
   register("saveTransaction", ledger.saveTransaction);
   register("deleteTransaction", ledger.deleteTransaction);
   register("setCurrency", ledger.setCurrency);
+  register("chooseImportFile", ledger.chooseImportFile);
+  register("previewImport", ledger.previewImport);
+  register("confirmImport", ledger.confirmImport);
 }

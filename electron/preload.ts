@@ -19,6 +19,9 @@ const bridge: LedgerApi = {
   saveTransaction: (input) => invoke("saveTransaction", input),
   deleteTransaction: (id) => invoke("deleteTransaction", id),
   setCurrency: (currency) => invoke("setCurrency", currency),
+  chooseImportFile: () => invoke("chooseImportFile"),
+  previewImport: (request) => invoke("previewImport", request),
+  confirmImport: (request) => invoke("confirmImport", request),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

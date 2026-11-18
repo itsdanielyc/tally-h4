@@ -16,7 +16,7 @@
 | Journey | Planned proof | Test files |
 |---|---|---|
 | Add, edit, delete and reopen a transaction | L1, L2, L3, L4, L6 | `tests/unit/transactions.test.ts`, `tests/contract/ledger.test.ts`, `tests/integration/ledger-file.test.ts`, `tests/ui/transactions.spec.ts`, `tests/e2e/ledger.spec.ts` |
-| Preview and import a CSV atomically, report rejected rows and skip duplicates | L1, L2, L3, L4, L6 | Pending slice 2 |
+| Preview and import a CSV atomically, report rejected rows and skip duplicates | L1, L2, L3, L4, L6 | `tests/unit/import.test.ts`, `tests/contract/ledger.test.ts`, `tests/integration/csv-import.test.ts`, `tests/ui/import.spec.ts`, `tests/e2e/import.spec.ts` |
 | Manage categories and apply payee rules to existing and imported rows | L1, L2, L3, L4 | Pending slice 3 |
 | Reconcile monthly totals and budget balances | L1, L2, L4 | Pending slice 4 |
 | Filter, export, import the result and undo | L1, L2, L3, L4, L6 | Pending slice 5 |

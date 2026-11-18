@@ -1,3 +1,5 @@
+import type { ImportReceipt, ImportRequest, ImportReview, ImportSource } from "./import";
+
 /** The values required to record a transaction plus its optional details. */
 export interface TransactionInput {
   readonly id?: string;
@@ -30,4 +32,7 @@ export interface LedgerApi {
   saveTransaction(this: void, input: TransactionInput): Promise<Ledger>;
   deleteTransaction(this: void, id: string): Promise<Ledger>;
   setCurrency(this: void, currency: string): Promise<Ledger>;
+  chooseImportFile(this: void): Promise<ImportSource | null>;
+  previewImport(this: void, request: ImportRequest): Promise<ImportReview>;
+  confirmImport(this: void, request: ImportRequest): Promise<ImportReceipt>;
 }

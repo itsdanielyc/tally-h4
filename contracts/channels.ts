@@ -5,4 +5,7 @@ export const channels = {
   saveTransaction: "tally:save-transaction",
   deleteTransaction: "tally:delete-transaction",
   setCurrency: "tally:set-currency",
+  chooseImportFile: "tally:choose-import-file",
+  previewImport: "tally:preview-import",
+  confirmImport: "tally:confirm-import",
 } satisfies Record<keyof LedgerApi, string>;

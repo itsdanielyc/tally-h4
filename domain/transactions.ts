@@ -10,7 +10,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Checks the actual calendar date in the year range that the ledger stores. */
-function isCalendarDate(value: unknown): value is string {
+export function isCalendarDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const parts = ISO_DATE.exec(value);
   if (!parts) return false;

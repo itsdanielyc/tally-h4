@@ -2,6 +2,7 @@
   - text: Tally
   - navigation "Ledger":
     - button "Transactions"
+    - button "Import CSV"
     - button "Settings"
   - text: On this device mock
 - main:
