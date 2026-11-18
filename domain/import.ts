@@ -3,7 +3,7 @@ import type { Ledger, Transaction } from "../contracts/ledger";
 import { createRuleMatcher } from "./categories";
 import type { CsvDocument } from "./csv-document";
 import { decodeExportText, exportIndex } from "./csv-export";
-import { parseCsvAmount, parseCsvDate } from "./csv-values";
+import { inferCsvDecimal, parseCsvAmount, parseCsvDate, type DecimalMark } from "./csv-values";
 import { validateCurrency } from "./money";
 import { isRecord, validateTransaction } from "./transactions";
 
@@ -23,16 +23,35 @@ function checkMapping(mapping: CsvMapping, width: number): void {
   if (new Set(indexes).size !== indexes.length) throw new Error("Map fields to different columns.");
 }
 
-function readAmount(cells: readonly string[], mapping: CsvMapping["amount"], currency: string): number {
-  if (mapping.kind === "signed") return parseCsvAmount(cells[mapping.column], currency);
+function readAmount(
+  cells: readonly string[], mapping: CsvMapping["amount"], currency: string, decimals: ReadonlyMap<number, DecimalMark>,
+): number {
+  const parse = (column: number): number => parseCsvAmount(cells[column], currency, decimals.get(column));
+  if (mapping.kind === "signed") return parse(mapping.column);
   const debit = cells[mapping.debit].trim();
   const credit = cells[mapping.credit].trim();
   if (!debit && !credit) throw new Error("The row has no debit or credit amount.");
-  const out = debit ? Math.abs(parseCsvAmount(debit, currency)) : 0;
-  const incoming = credit ? parseCsvAmount(credit, currency) : 0;
+  const out = debit ? Math.abs(parse(mapping.debit)) : 0;
+  const incoming = credit ? parse(mapping.credit) : 0;
   if (incoming < 0) throw new Error("The credit amount must be positive or zero.");
   if (out && incoming) throw new Error("The row has both a debit and a credit.");
   return incoming - out;
+}
+
+function* valuesIn(document: CsvDocument, column: number): Iterable<string> {
+  for (const row of document.rows) {
+    if (!row.issue && row.cells.length === document.columns.length) yield row.cells[column];
+  }
+}
+
+function amountConventions(document: CsvDocument, mapping: CsvMapping["amount"], currency: string): ReadonlyMap<number, DecimalMark> {
+  const columns = mapping.kind === "signed" ? [mapping.column] : [mapping.debit, mapping.credit];
+  const conventions = new Map<number, DecimalMark>();
+  for (const column of columns) {
+    const mark = document.tallyExport ? "." : inferCsvDecimal(valuesIn(document, column), currency);
+    if (mark) conventions.set(column, mark);
+  }
+  return conventions;
 }
 
 function identity(transaction: Candidate): string {
@@ -62,14 +81,21 @@ function importCurrency(document: CsvDocument, ledger: Ledger): string {
   return ledger.currency;
 }
 
+interface RowInterpretation {
+  readonly tallyExport: boolean;
+  readonly matchRule: (payee: string) => string;
+  readonly decimals: ReadonlyMap<number, DecimalMark>;
+}
+
 function readRow(
-  cells: readonly string[], mapping: CsvMapping, currency: string, tallyExport: boolean, matchRule: (payee: string) => string,
+  cells: readonly string[], mapping: CsvMapping, currency: string, interpretation: RowInterpretation,
 ): Candidate {
+  const { tallyExport, matchRule, decimals } = interpretation;
   const payee = tallyExport ? decodeExportText(cells[mapping.payee]) : cells[mapping.payee];
   if (tallyExport && cells[exportIndex.currency] !== currency) throw new Error("The row uses a different or invalid currency.");
   return validateTransaction({
     date: parseCsvDate(cells[mapping.date], mapping.dateOrder), payee,
-    amountMinor: readAmount(cells, mapping.amount, currency),
+    amountMinor: readAmount(cells, mapping.amount, currency, decimals),
     category: tallyExport ? decodeExportText(cells[exportIndex.category]) : matchRule(payee),
     note: tallyExport ? decodeExportText(cells[exportIndex.note]) : "",
   });
@@ -80,7 +106,11 @@ function readRow(
 export function prepareImport(document: CsvDocument, mapping: CsvMapping, ledger: Ledger): PreparedImport {
   checkMapping(mapping, document.columns.length);
   const currency = importCurrency(document, ledger);
-  const matchRule = createRuleMatcher(ledger.rules);
+  const interpretation = {
+    tallyExport: document.tallyExport,
+    matchRule: createRuleMatcher(ledger.rules),
+    decimals: amountConventions(document, mapping.amount, currency),
+  };
   const known = new Set(ledger.transactions.map(identity));
   const accepted: Candidate[] = [];
   const rejections: RejectedRow[] = [];
@@ -89,7 +119,7 @@ export function prepareImport(document: CsvDocument, mapping: CsvMapping, ledger
     try {
       if (row.issue) throw new Error(row.issue);
       if (row.cells.length !== document.columns.length) throw new Error("The row has a different number of columns from the header.");
-      const transaction = readRow(row.cells, mapping, currency, document.tallyExport, matchRule);
+      const transaction = readRow(row.cells, mapping, currency, interpretation);
       if (known.has(identity(transaction))) duplicateCount++;
       else accepted.push(transaction);
     } catch (error) {

@@ -32,7 +32,7 @@ const bridge: LedgerApi = {
   getMonth: (month) => invoke("getMonth", month),
   setBudget: (budget) => invoke("setBudget", budget),
   exportCsv: (filter) => invoke("exportCsv", filter),
-  undoLast: () => invoke("undoLast"),
+  undoLast: (token) => invoke("undoLast", token),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

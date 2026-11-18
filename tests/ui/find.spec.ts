@@ -38,7 +38,11 @@ test("finds notes, narrows by inclusive ranges, exports the selection and undoes
   await page.getByRole("button", { name: "Delete transaction" }).click();
   const undo = page.getByRole("button", { name: "Undo delete" });
   await expect(undo).toBeVisible();
-  await undo.click();
+  const blocked = await undo.evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    return document.querySelector<HTMLElement>("#view")?.inert;
+  });
+  expect(blocked).toBe(true);
   await expect(rows).toHaveCount(2);
   await expect(undo).toBeHidden();
   await expect(search).toHaveValue("RECEIPT");

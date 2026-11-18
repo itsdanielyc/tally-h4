@@ -1,4 +1,5 @@
 import type { CsvDelimiter } from "../contracts/import";
+import { MAXIMUM_CSV_COLUMNS } from "./csv-limits";
 
 export interface CsvRecord {
   readonly line: number;
@@ -14,6 +15,7 @@ class CsvScanner {
   private cells: string[] = [];
   private field = "";
   private state: FieldState = "unquoted";
+  private quotedRecord = false;
   private issue?: string;
   private line = 1;
   private recordLine = 1;
@@ -53,6 +55,7 @@ class CsvScanner {
     } else if (this.state === "unquoted" && !this.field.trim()) {
       this.field = "";
       this.state = "quoted";
+      this.quotedRecord = true;
     } else {
       this.issue ??= "Quote appears inside an unquoted field.";
     }
@@ -74,18 +77,21 @@ class CsvScanner {
   }
 
   private endField(): void {
-    this.cells.push(this.field);
+    if (this.cells.length === MAXIMUM_CSV_COLUMNS) {
+      this.issue ??= "The row has more than " + MAXIMUM_CSV_COLUMNS + " columns.";
+    } else this.cells.push(this.field);
     this.field = "";
     this.state = "unquoted";
   }
 
   private endRecord(): void {
     this.endField();
-    if (this.issue || this.cells.some((cell) => cell.trim())) {
+    if (this.issue || this.quotedRecord || this.cells.length > 1 || this.cells[0]?.trim()) {
       this.records.push({ line: this.recordLine, cells: this.cells, issue: this.issue });
     }
     this.cells = [];
     this.issue = undefined;
+    this.quotedRecord = false;
   }
 }
 

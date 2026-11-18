@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-26]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -70,7 +70,7 @@ jobs:
       - name: Merge the three capture sets
         run: |
           destination=tests/ui/__snapshots__
-          for pair in ubuntu-latest:linux windows-latest:win32 macos-26:darwin; do
+          for pair in ubuntu-latest:linux windows-latest:win32 macos-latest:darwin; do
             source="incoming/snapshots-${pair%:*}"
             platform="${pair#*:}"
             while IFS= read -r -d '' file; do
@@ -103,5 +103,5 @@ jobs:
             branch="snapshots/update-${{ github.run_id }}"
             git checkout -b "$branch"
             git push origin "$branch"
-            gh pr create --base main --head "$branch"               --title "Update visual snapshots (run ${{ github.run_id }})"               --body "Baselines captured on ubuntu-latest, windows-latest and macos-26 by the snapshots workflow. Review the images before merging."
+            gh pr create --base main --head "$branch"               --title "Update visual snapshots (run ${{ github.run_id }})"               --body "Baselines captured on ubuntu-latest, windows-latest and macos-latest by the snapshots workflow. Review the images before merging."
           fi

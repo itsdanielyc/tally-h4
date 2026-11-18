@@ -1,4 +1,5 @@
 import type { Transaction } from "../contracts/ledger";
+import { MAXIMUM_CSV_DATA_ROWS } from "./csv-limits";
 import { minorAmountText } from "./money";
 
 export const EXPORT_FILENAME = "tally-transactions.csv";
@@ -22,6 +23,9 @@ export function decodeExportText(value: string): string {
 /** Writes the selected user-visible fields and currency with exact decimal amounts. */
 // Time and space O(serialized text size).
 export function serializeCsv(rows: readonly Transaction[], currency: string): string {
+  if (rows.length > MAXIMUM_CSV_DATA_ROWS) {
+    throw new Error("Narrow the filters to export at most " + MAXIMUM_CSV_DATA_ROWS.toLocaleString("en-US") + " transactions.");
+  }
   const lines = rows.map((row) => [
     row.date, encodeText(row.payee), minorAmountText(row.amountMinor, currency),
     encodeText(row.category), encodeText(row.note), currency,

@@ -1,6 +1,6 @@
 import type { ImportRequest, ImportSource } from "../contracts/import";
 import type { Ledger, LedgerApi, LedgerSnapshot } from "../contracts/ledger";
-import type { UndoKind } from "../contracts/transfer";
+import type { UndoOffer } from "../contracts/transfer";
 import { parseCsvDocument, type CsvDocument } from "../domain/csv-document";
 import { prepareImport } from "../domain/import";
 import type { LedgerSession } from "./ledger-session";
@@ -16,7 +16,7 @@ type ImportCommands = Pick<LedgerApi, "chooseImportFile" | "previewImport" | "co
 
 /** Owns the selected source and the preview/commit flow for one application session. */
 export function createImportCommands(
-  session: LedgerSession, pickCsv: PickCsv, view: (ledger: Ledger, undo?: UndoKind) => LedgerSnapshot, makeId: () => string,
+  session: LedgerSession, pickCsv: PickCsv, view: (ledger: Ledger, undo?: UndoOffer) => LedgerSnapshot, makeId: () => string,
 ): ImportCommands {
   let pending: { readonly source: ImportSource; readonly document: CsvDocument } | undefined;
 

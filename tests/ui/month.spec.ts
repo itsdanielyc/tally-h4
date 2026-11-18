@@ -31,7 +31,11 @@ test("compares spending and income by month and displays budget left or over", a
   await page.getByRole("button", { name: "Save budget" }).click();
   await expect(page.getByRole("row").filter({ hasText: "Food" })).toContainText("$5.10 over");
 
-  await page.getByRole("button", { name: "Previous month" }).click();
+  const priorTotalsDuringChange = await page.getByRole("button", { name: "Previous month" }).evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    return document.querySelector('[data-testid="month-spending"]')?.textContent;
+  });
+  expect(priorTotalsDuringChange).toBeUndefined();
   await expect(page.getByTestId("month-spending")).toHaveText("$9.20");
   await page.getByRole("button", { name: "Next month" }).click();
   await expect(page.getByTestId("month-spending")).toHaveText("$30.10");

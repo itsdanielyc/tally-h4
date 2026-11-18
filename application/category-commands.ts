@@ -1,5 +1,5 @@
 import type { Ledger, LedgerApi, LedgerSnapshot } from "../contracts/ledger";
-import type { UndoKind } from "../contracts/transfer";
+import type { UndoKind, UndoOffer } from "../contracts/transfer";
 import { applyRules, createCategory, mergeCategory, removeCategory, renameCategory, validateRule } from "../domain/categories";
 import type { LedgerSession } from "./ledger-session";
 
@@ -8,7 +8,7 @@ type CategoryCommands = Pick<LedgerApi,
 
 /** Runs category and rule mutations through the common atomic ledger session. */
 export function createCategoryCommands(
-  session: LedgerSession, view: (ledger: Ledger, undo?: UndoKind) => LedgerSnapshot, makeId: () => string,
+  session: LedgerSession, view: (ledger: Ledger, undo?: UndoOffer) => LedgerSnapshot, makeId: () => string,
 ): CategoryCommands {
   function change(mutation: (previous: Ledger) => Ledger, undo?: UndoKind): Promise<LedgerSnapshot> {
     return session.change((previous) => {

@@ -8,11 +8,11 @@ const BANK_CSV = [
   "31/02/2026;Invalid date;4;",
 ].join("\n");
 
-async function pickFile(page: Page): Promise<void> {
+async function pickFile(page: Page, contents = BANK_CSV): Promise<void> {
   const pendingFile = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Choose CSV" }).click();
   await (await pendingFile).setFiles({
-    name: "statement.csv", mimeType: "text/csv", buffer: Buffer.from(BANK_CSV),
+    name: "statement.csv", mimeType: "text/csv", buffer: Buffer.from(contents),
   });
   await expect(page.getByText("Header on line 2")).toBeVisible();
 }
@@ -39,4 +39,21 @@ test("previews mapped debit and credit rows, reports rejections and skips reimpo
   await expect(page.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
   await page.getByRole("button", { name: "Transactions", exact: true }).click();
   await expect(page.getByRole("table", { name: "Transactions" }).getByRole("row")).toHaveCount(3);
+});
+
+test("editing an imported amount retains the original multiline payee", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Import CSV" }).click();
+  await pickFile(page, 'Statement\r\nDate,Payee,Amount\r\n2026-11-18,"Market\r\nAnnex",-2\r\n');
+  await page.getByRole("button", { name: "Preview import" }).click();
+  await page.getByRole("button", { name: "Import 1 transaction", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Imported 1 transaction");
+  await page.getByRole("button", { name: "Transactions", exact: true }).click();
+  await page.getByRole("button", { name: /Edit Market/ }).click();
+  const editor = page.getByRole("dialog", { name: "Edit transaction" });
+  await editor.getByLabel("Amount", { exact: true }).fill("-2.50");
+  await editor.getByRole("button", { name: "Save transaction" }).click();
+  await expect(editor).toBeHidden();
+  const row = page.getByRole("row").filter({ hasText: "Market" });
+  expect(await row.locator(".payee").textContent()).toBe("Market\r\nAnnex");
 });

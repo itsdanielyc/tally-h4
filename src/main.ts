@@ -22,6 +22,7 @@ class App {
   private readonly navigation = document.querySelectorAll<HTMLButtonElement>("nav button[data-screen]");
   private ledger?: LedgerSnapshot;
   private screen: Screen = "transactions";
+  private writing = false;
 
   constructor(private readonly backend: Backend) {}
 
@@ -33,12 +34,10 @@ class App {
       button.addEventListener("click", () => this.navigate(button.dataset.screen));
     }
     this.undo.addEventListener("click", () => {
-      this.undo.disabled = true;
-      void this.backend.undoLast().then((ledger) => {
-        this.ledger = ledger;
-        this.render();
-        this.announce("Change undone.");
-      }).catch((error: unknown) => this.report(error)).finally(() => { this.undo.disabled = false; });
+      const undo = this.ledger?.undo;
+      if (!undo) return;
+      void this.commit(() => this.backend.undoLast(undo.token), "Change undone.")
+        .catch((error: unknown) => this.report(error));
     });
     this.ledger = await this.backend.loadLedger();
     this.render();
@@ -51,6 +50,22 @@ class App {
 
   private report(error: unknown): void {
     this.error.textContent = error instanceof Error ? error.message : "The ledger is unavailable.";
+  }
+
+  private async commit(operation: () => Promise<LedgerSnapshot>, message: string | (() => string)): Promise<void> {
+    if (this.writing) throw new Error("Wait for the current ledger change to finish.");
+    this.writing = true;
+    this.view.inert = true;
+    this.undo.disabled = true;
+    try {
+      this.ledger = await operation();
+      this.render();
+      this.announce(typeof message === "string" ? message : message());
+    } finally {
+      this.writing = false;
+      this.view.inert = false;
+      this.undo.disabled = false;
+    }
   }
 
   private navigate(screen?: string): void {
@@ -69,15 +84,12 @@ class App {
     }
     this.view.replaceChildren();
     this.undo.hidden = this.ledger.undo === undefined;
-    if (this.ledger.undo) this.undo.textContent = "Undo " + this.ledger.undo;
+    if (this.ledger.undo) this.undo.textContent = "Undo " + this.ledger.undo.kind;
     const context: ViewContext = {
       backend: this.backend,
       ledger: this.ledger,
-      commit: async (operation, message) => {
-        this.ledger = await operation();
-        this.render();
-        this.announce(message);
-      },
+      commit: (operation, message) => this.commit(operation, message),
+      mutationPending: () => this.writing,
       announce: (message) => this.announce(message),
       report: (error) => this.report(error),
     };

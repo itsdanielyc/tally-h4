@@ -1,5 +1,5 @@
 import type { Ledger, LedgerApi, LedgerSnapshot, Transaction } from "../contracts/ledger";
-import type { UndoKind } from "../contracts/transfer";
+import type { UndoOffer } from "../contracts/transfer";
 import { createExportCommand, type SaveCsv } from "./export-command";
 import { setBudget } from "../domain/budgets";
 import { resolveTransactionCategory } from "../domain/categories";
@@ -10,7 +10,7 @@ import { createImportCommands, type PickCsv } from "./import-commands";
 import { createCategoryCommands } from "./category-commands";
 import { LedgerSession, type LedgerStore } from "./ledger-session";
 
-function view(ledger: Ledger, undo?: UndoKind): LedgerSnapshot {
+function view(ledger: Ledger, undo?: UndoOffer): LedgerSnapshot {
   const snapshot = { ...ledger, transactions: newestFirst(ledger.transactions) };
   return undo ? { ...snapshot, undo } : snapshot;
 }
@@ -22,6 +22,10 @@ function committed(ledger: Ledger): { ledger: Ledger; result: typeof view } {
 function replaceTransaction(ledger: Ledger, transaction: Transaction): Ledger {
   const index = ledger.transactions.findIndex(({ id }) => id === transaction.id);
   if (index < 0) throw new Error("This transaction no longer exists.");
+  const previous = ledger.transactions[index];
+  if (previous.date === transaction.date && previous.payee === transaction.payee &&
+      previous.amountMinor === transaction.amountMinor && previous.category === transaction.category &&
+      previous.note === transaction.note) return ledger;
   const transactions = [...ledger.transactions];
   transactions[index] = transaction;
   return { ...ledger, transactions };
@@ -40,11 +44,11 @@ export function createLedgerApi(
     ...createCategoryCommands(session, view, makeId),
     loadLedger: () => session.read(view),
     exportCsv: createExportCommand(session, saveCsv),
-    undoLast: () => session.undoLast(view),
+    undoLast: (token) => session.undoLast(token, view),
     saveTransaction: (input) => session.change((ledger) => {
       const fields = validateTransaction(input);
       const category = resolveTransactionCategory(ledger.categories, fields.category);
-      const updated = { ...ledger, categories: category.categories };
+      const updated = category.categories === ledger.categories ? ledger : { ...ledger, categories: category.categories };
       const details = { ...fields, category: category.name };
       if (input.id === undefined) {
         const transaction = { ...details, id: makeId() };

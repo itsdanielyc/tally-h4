@@ -1,6 +1,7 @@
 import type { CsvDelimiter, CsvMapping } from "../contracts/import";
 import { scanCsv, type CsvRecord } from "./csv-scanner";
 import { exportHeaders } from "./csv-export";
+import { MAXIMUM_CSV_DATA_ROWS } from "./csv-limits";
 
 const DELIMITERS: readonly CsvDelimiter[] = [",", ";", "\t", "|"];
 const SAMPLE_CHARACTERS = 64_000;
@@ -76,9 +77,14 @@ function detectHeader(contents: string): HeaderCandidate {
   const snippet = contents.slice(0, SAMPLE_CHARACTERS);
   for (const delimiter of DELIMITERS) {
     const sample = scanCsv(snippet, delimiter, SAMPLE_RECORDS);
+    const firstByLayout = new Map<string, CsvRecord>();
     for (const [offset, record] of sample.entries()) {
       const score = scoreHeader(sample, offset);
-      if (score >= 0 && (best === undefined || score > best.score)) best = { delimiter, record, score };
+      if (score < 0) continue;
+      const layout = JSON.stringify(record.cells.map(normalizedHeader));
+      const first = firstByLayout.get(layout) ?? record;
+      firstByLayout.set(layout, first);
+      if (best === undefined || score > best.score) best = { delimiter, record: first, score };
     }
   }
   if (!best) throw new Error("Tally could not find a header row with multiple columns.");
@@ -90,14 +96,18 @@ function detectHeader(contents: string): HeaderCandidate {
 export function parseCsvDocument(raw: string): CsvDocument {
   const contents = raw.replace(/^\uFEFF/, "");
   const { delimiter, record: header } = detectHeader(contents);
-  const records = scanCsv(contents, delimiter);
+  const records = scanCsv(contents, delimiter, MAXIMUM_CSV_DATA_ROWS + SAMPLE_RECORDS + 1);
+  const rows = records.filter((record) => record.line > header.line);
+  if (rows.length > MAXIMUM_CSV_DATA_ROWS) {
+    throw new Error("Choose a CSV with at most " + MAXIMUM_CSV_DATA_ROWS.toLocaleString("en-US") + " data rows.");
+  }
   const columns = header.cells.map((label, index) => label.trim() || "Column " + (index + 1));
   return {
     delimiter,
     headerLine: header.line,
     columns,
     suggested: suggest(columns),
-    rows: records.filter((record) => record.line > header.line),
+    rows,
     tallyExport: delimiter === "," && columns.length === exportHeaders.length &&
       exportHeaders.every((label, index) => label === columns[index]),
   };

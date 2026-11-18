@@ -74,7 +74,7 @@ export function renderTransactions(parent: HTMLElement, context: ViewContext): v
   let exporting = false;
   let exportable = false;
   const exportButton = command("Export CSV", () => {
-    if (exporting || !exportable) return;
+    if (exporting || !exportable || context.mutationPending()) return;
     exportButton.disabled = exporting = true;
     void context.backend.exportCsv(activeFilters).then((receipt) => {
       if (receipt) {

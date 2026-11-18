@@ -78,11 +78,14 @@ function mapFile(parent: HTMLElement, source: ImportSource, context: ViewContext
       if (revision !== inspectedRevision) return;
       renderImportPreview(preview, review, (button) => {
         withFeedback(button, error, async () => {
-          const receipt = await context.backend.confirmImport(request);
-          const noun = receipt.imported === 1 ? " transaction" : " transactions";
-          const message = "Imported " + receipt.imported + noun + ". " +
-            receipt.duplicateCount + " duplicates skipped. " + receipt.rejections.length + " rejected.";
-          await context.commit(async () => receipt.ledger, message);
+          let message = "";
+          await context.commit(async () => {
+            const receipt = await context.backend.confirmImport(request);
+            const noun = receipt.imported === 1 ? " transaction" : " transactions";
+            message = "Imported " + receipt.imported + noun + ". " +
+              receipt.duplicateCount + " duplicates skipped. " + receipt.rejections.length + " rejected.";
+            return receipt.ledger;
+          }, () => message);
         });
       });
     });

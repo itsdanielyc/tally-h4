@@ -10,19 +10,25 @@ function localToday(): string {
     .map((part) => String(part).padStart(2, "0")).join("-");
 }
 
-function draft(form: HTMLFormElement, currency: string, previous?: Transaction): TransactionInput {
+function draft(form: HTMLFormElement, original: FormData, currency: string, previous?: Transaction): TransactionInput {
   const fields = new FormData(form);
+  const preserving = (name: "payee" | "note"): string => {
+    const value = formText(fields, name);
+    return previous && value === formText(original, name) ? previous[name] : value;
+  };
   return {
     id: previous?.id,
     date: formText(fields, "date"),
-    payee: formText(fields, "payee"),
+    payee: preserving("payee"),
     amountMinor: parseMinorAmount(formText(fields, "amount"), currency),
     category: formText(fields, "category"),
-    note: formText(fields, "note"),
+    note: preserving("note"),
   };
 }
 
 function bindEditor(form: HTMLFormElement, dialog: HTMLDialogElement, context: ViewContext, previous?: Transaction): void {
+  // HTML controls normalize line breaks in existing imported text.
+  const original = new FormData(form);
   const save = required<HTMLButtonElement>(form, "button[type=submit]");
   const deletion = required<HTMLButtonElement>(form, "[data-delete]");
   const error = required(form, "[role=alert]");
@@ -41,7 +47,7 @@ function bindEditor(form: HTMLFormElement, dialog: HTMLDialogElement, context: V
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     run(() => context.commit(
-      () => context.backend.saveTransaction(draft(form, context.ledger.currency, previous)),
+      () => context.backend.saveTransaction(draft(form, original, context.ledger.currency, previous)),
       "Transaction saved.",
     ));
   });

@@ -106,10 +106,15 @@ export function renderMonth(parent: HTMLElement, context: ViewContext): void {
     input.value = value;
     back.disabled = shiftMonth(value, -1) === value;
     forward.disabled = shiftMonth(value, 1) === value;
+    panel.replaceChildren(element("p", "Loading month…", "hint"));
     dateLabel.textContent = MONTH_FORMAT.format(new Date(value + "-01T00:00:00Z"));
     void context.backend.getMonth(value).then((result) => {
       if (input.value === result.month) summaryContent(panel, result);
-    }).catch(context.report);
+    }).catch((problem: unknown) => {
+      if (input.value !== value) return;
+      panel.replaceChildren();
+      context.report(problem);
+    });
   };
   input.addEventListener("change", () => {
     if (input.validity.valid) load(input.value);

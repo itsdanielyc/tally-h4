@@ -45,4 +45,40 @@ describe("bank CSV parsing", () => {
     expect(() => prepareImport(document, { ...document.suggested, payee: document.suggested.date }, empty))
       .toThrow("different columns");
   });
+
+  it("reports explicitly empty CSV records at their original line numbers", () => {
+    const document = parseCsvDocument('Date,Payee,Amount\n2026-11-18,Cafe,-2\n,,\n\n"",\n2026-11-19,Rail,-3');
+    const result = prepareImport(document, document.suggested, newLedger("USD"));
+    expect(result.accepted).toHaveLength(2);
+    expect(result.review.rejections.map(({ line }) => line)).toEqual([3, 5]);
+  });
+
+  it("keeps records before a repeated header with a cleaner run of rows", () => {
+    const document = parseCsvDocument([
+      "Date,Payee,Amount", "2026-11-18,Before,-1.00", "broken", "Date,Payee,Amount",
+      ...Array.from({ length: 5 }, (_, index) => "2026-11-19,After " + index + ",-3"),
+    ].join("\n"));
+    expect(document.headerLine).toBe(1);
+    const result = prepareImport(document, document.suggested, newLedger("USD"));
+    expect(result.accepted).toHaveLength(6);
+    expect(result.accepted[0].payee).toBe("Before");
+    expect(result.review.rejections.map(({ line }) => line)).toEqual([3, 4]);
+  });
+
+  it("uses the unambiguous decimal convention for a three-decimal currency column", () => {
+    const document = parseCsvDocument('Date,Payee,Amount\n2026-11-18,A,"1,234.125"\n2026-11-19,B,"2,345"');
+    const result = prepareImport(document, document.suggested, newLedger("KWD"));
+    expect(result.accepted.map(({ amountMinor }) => amountMinor)).toEqual([1_234_125, 2_345_000]);
+    const ambiguous = parseCsvDocument('Date,Payee,Amount\n2026-11-19,B,"2,345"');
+    const reviewed = prepareImport(ambiguous, ambiguous.suggested, newLedger("KWD"));
+    expect(reviewed.review.rejections[0]?.reason).toContain("Ambiguous");
+  });
+
+  it("bounds the number of materialized CSV records and columns", () => {
+    const header = "Date,Payee,Amount\n";
+    expect(() => parseCsvDocument(header + "x\n".repeat(25_001))).toThrow("25,000");
+    const document = parseCsvDocument(header + ",".repeat(257) + "\n2026-11-18,A,2");
+    const prepared = prepareImport(document, document.suggested, newLedger("USD"));
+    expect(prepared.review.rejections).toMatchObject([{ line: 2, reason: expect.stringContaining("256 columns") }]);
+  });
 });

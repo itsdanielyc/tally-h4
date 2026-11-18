@@ -23,7 +23,9 @@ it("keeps the native ledger and browser mock aligned through CRUD and currency s
       await expect(api.saveTransaction({ ...transaction, id: "test-record", note: "New note" })).resolves.toMatchObject({
         transactions: [{ id: "test-record", note: "New note" }],
       });
-      await expect(api.deleteTransaction("test-record")).resolves.toEqual({ currency: "GBP", ...empty, undo: "delete" });
+      await expect(api.deleteTransaction("test-record")).resolves.toEqual({
+        currency: "GBP", ...empty, undo: { kind: "delete", token: 1 },
+      });
       await expect(api.deleteTransaction("test-record")).rejects.toThrow("no longer exists");
     }
     await expect(native.loadLedger()).resolves.toEqual(await mock.loadLedger());
@@ -40,26 +42,55 @@ it("offers one undo for delete, merge and import and clears it after another eff
     const native = createLedgerApi(new FileLedgerStore(join(directory, "ledger.json"), "USD"), undefined, pick);
     for (const api of [mock, native]) {
       const added = await api.saveTransaction({ date: "2026-11-18", payee: "Market", amountMinor: -212, category: "Food" });
-      await expect(api.deleteTransaction(added.transactions[0].id)).resolves.toMatchObject({ undo: "delete", transactions: [] });
-      await expect(api.undoLast()).resolves.toEqual(added);
-      await expect(api.undoLast()).rejects.toThrow("no change to undo");
+      const deleted = await api.deleteTransaction(added.transactions[0].id);
+      expect(deleted).toMatchObject({ undo: { kind: "delete" }, transactions: [] });
+      await expect(api.undoLast(deleted.undo!.token)).resolves.toEqual(added);
+      await expect(api.undoLast(deleted.undo!.token)).rejects.toThrow("no change to undo");
       await api.addCategory("Travel");
       await api.setBudget({ category: "Food", amountMinor: 2400 });
       await api.addPayeeRule({ contains: "MARKET", category: "Food" });
       const beforeMerge = await api.loadLedger();
-      await expect(api.mergeCategory({ from: "Food", to: "Travel" })).resolves.toMatchObject({ undo: "merge" });
-      await expect(api.undoLast()).resolves.toEqual(beforeMerge);
+      const merged = await api.mergeCategory({ from: "Food", to: "Travel" });
+      expect(merged.undo?.kind).toBe("merge");
+      await expect(api.undoLast(merged.undo!.token)).resolves.toEqual(beforeMerge);
       const source = await api.chooseImportFile();
       const request = { token: source!.token, mapping: source!.suggested };
-      await expect(api.confirmImport(request)).resolves.toMatchObject({ imported: 1, ledger: { undo: "import" } });
-      await expect(api.undoLast()).resolves.toEqual(beforeMerge);
-      await api.confirmImport(request);
+      const firstImport = await api.confirmImport(request);
+      expect(firstImport).toMatchObject({ imported: 1, ledger: { undo: { kind: "import" } } });
+      await expect(api.undoLast(firstImport.ledger.undo!.token)).resolves.toEqual(beforeMerge);
+      const secondImport = await api.confirmImport(request);
       await api.addCategory("Home");
-      await expect(api.undoLast()).rejects.toThrow("no change to undo");
+      await expect(api.undoLast(secondImport.ledger.undo!.token)).rejects.toThrow("no change to undo");
     }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+it("rejects a stale undo click queued behind an import", async () => {
+  const mock = createMock("USD", undefined, async () => ({
+    name: "statement.csv", contents: "Date,Payee,Amount\n2026-11-18,Imported,-1.25",
+  }));
+  const added = await mock.saveTransaction({ date: "2026-11-18", payee: "Deleted", amountMinor: -212 });
+  const deleted = await mock.deleteTransaction(added.transactions[0].id);
+  const source = await mock.chooseImportFile();
+  const request = { token: source!.token, mapping: source!.suggested };
+  const importing = mock.confirmImport(request);
+  const stale = mock.undoLast(deleted.undo!.token);
+  const guarded = expect(stale).rejects.toThrow("undo changed");
+  await expect(importing).resolves.toMatchObject({ imported: 1 });
+  await guarded;
+  await expect(mock.loadLedger()).resolves.toMatchObject({ transactions: [{ payee: "Imported" }] });
+});
+
+it("preserves an available undo after saving an unchanged transaction", async () => {
+  const api = createMock();
+  const stable = await api.saveTransaction({ date: "2026-11-18", payee: "Keep", amountMinor: 500 });
+  const beforeDelete = await api.saveTransaction({ date: "2026-11-19", payee: "Delete", amountMinor: -905 });
+  const deleted = await api.deleteTransaction(beforeDelete.transactions[0].id);
+  const unchanged = await api.saveTransaction(stable.transactions[0]);
+  expect(unchanged.undo).toEqual(deleted.undo);
+  await expect(api.undoLast(deleted.undo!.token)).resolves.toEqual(beforeDelete);
 });
 
 it("returns the same source, review and commit result for mock and native CSV commands", async () => {

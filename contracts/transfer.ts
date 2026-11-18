@@ -14,3 +14,9 @@ export interface ExportReceipt {
 }
 
 export type UndoKind = "delete" | "merge" | "import";
+
+/** Identifies the exact undo offered by the currently displayed snapshot. */
+export interface UndoOffer {
+  readonly kind: UndoKind;
+  readonly token: number;
+}

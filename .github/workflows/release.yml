@@ -1,0 +1,74 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    name: verify version and Tier 1 installer evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node scripts/release-check.mjs
+      - name: Require a green installers run for this exact commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow installers.yml \
+            --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "No green installers run exists for $GITHUB_SHA." >&2
+            exit 1
+          fi
+          result=$(gh run view "$run" --repo "$GITHUB_REPOSITORY" --json jobs \
+            --jq '[.jobs[] | select(.name | startswith("installers (")) | select(.conclusion == "success")] | length')
+          if [ "$result" -ne 3 ]; then
+            echo "Run $run did not pass all three Tier 1 installer jobs." >&2
+            exit 1
+          fi
+          echo "Tier 1 installer evidence: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
+
+  bundles:
+    needs: [gate]
+    uses: ./.github/workflows/installers.yml
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: [bundles]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bundles-*
+          path: assets
+          merge-multiple: true
+      - name: Read the matching changelog section
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## [$version]" '/^## / { active = index($0, heading) == 1 } active' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Publish the already-tagged release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          options=()
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then options+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" assets/* --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md "${options[@]}"

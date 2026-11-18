@@ -11,3 +11,26 @@ npm run test:ui        # Playwright, chromium, against the labelled mock
 npm run build          # main, preload and renderer into out/ for the real-shell suite
 npm run test:e2e       # Playwright's Electron launcher against the built app
 ```
+
+<!-- keel:start -->
+## Using Tally
+
+Tally keeps one ledger in `ledger.json` under the desktop app's user data
+directory. Choose its currency in Settings before entering amounts. Use a
+minus sign for spending. The Transactions screen supports searching,
+filtering and exporting the current selection.
+
+Import CSV helps map bank columns before writing to the ledger. A file can
+contain up to 25,000 data rows and 32 MB of text. Payee rules
+apply to bank imports and to uncategorised rows when you choose Apply rules.
+Monthly summary shows income, spending and recurring budgets. The latest
+delete, category merge or import offers one undo until the next ledger change.
+
+## Pre-tag proof
+
+`installers` builds and smoke-tests the Windows installer, macOS DMG, and
+Linux DEB and AppImage on Tier 1 runners. The `release` workflow can be
+dispatched for pre-tag evidence once the installers run is green on the same
+commit. Its publish job requires a version tag. See the changelog for the
+signing status and the verification ledger for run links.
+<!-- keel:end -->

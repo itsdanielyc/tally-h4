@@ -1,7 +1,7 @@
 import type { ImportReceipt, ImportRequest, ImportReview, ImportSource } from "./import";
 import type { CategoryChange, PayeeRule, PayeeRuleInput } from "./categories";
 import type { BudgetInput, CategoryBudget, MonthSummary } from "./month";
-import type { ExportReceipt, TransactionFilter, UndoKind } from "./transfer";
+import type { ExportReceipt, TransactionFilter, UndoOffer } from "./transfer";
 
 /** The values required to record a transaction plus its optional details. */
 export interface TransactionInput {
@@ -34,7 +34,7 @@ export interface Ledger {
 
 /** A renderer snapshot can also advertise the session's available undo. */
 export interface LedgerSnapshot extends Ledger {
-  readonly undo?: UndoKind;
+  readonly undo?: UndoOffer;
 }
 
 /** Operations shared by the desktop bridge and the browser's in-memory backend. */
@@ -56,5 +56,5 @@ export interface LedgerApi {
   getMonth(this: void, month: string): Promise<MonthSummary>;
   setBudget(this: void, budget: BudgetInput): Promise<LedgerSnapshot>;
   exportCsv(this: void, filter: TransactionFilter): Promise<ExportReceipt | null>;
-  undoLast(this: void): Promise<LedgerSnapshot>;
+  undoLast(this: void, token: number): Promise<LedgerSnapshot>;
 }

@@ -1,9 +1,8 @@
 import { open } from "node:fs/promises";
 import { basename } from "node:path";
 import type { PickedCsv } from "../application/import-commands";
+import { MAXIMUM_CSV_BYTES } from "../domain/csv-limits";
 import { replaceFileAtomically } from "./store/atomic-file";
-
-const MAXIMUM_CSV_BYTES = 32 * 1024 * 1024;
 
 function decodeCsv(bytes: Buffer): string {
   const encoding = bytes[0] === 0xff && bytes[1] === 0xfe ? "utf-16le"

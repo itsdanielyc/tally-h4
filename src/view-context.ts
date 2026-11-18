@@ -5,7 +5,8 @@ import type { Backend } from "./api";
 export interface ViewContext {
   readonly backend: Backend;
   readonly ledger: LedgerSnapshot;
-  commit(operation: () => Promise<LedgerSnapshot>, message: string): Promise<void>;
+  commit(operation: () => Promise<LedgerSnapshot>, message: string | (() => string)): Promise<void>;
+  mutationPending(this: void): boolean;
   announce(this: void, message: string): void;
   report(this: void, error: unknown): void;
 }

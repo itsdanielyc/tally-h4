@@ -54,15 +54,16 @@ it("retains the undo after an interrupted restore and consumes it after replacin
     const original = await api.saveTransaction({ date: "2026-11-18", payee: "Coffee", amountMinor: -300 });
     const originalBytes = await readFile(file);
     const deleted = await api.deleteTransaction(original.transactions[0].id);
+    const undoToken = deleted.undo!.token;
     const deletedBytes = await readFile(file);
     interrupted = true;
-    await expect(api.undoLast()).rejects.toThrow("undo interrupted");
+    await expect(api.undoLast(undoToken)).rejects.toThrow("undo interrupted");
     await expect(api.loadLedger()).resolves.toEqual(deleted);
     expect(await readFile(file)).toEqual(deletedBytes);
     interrupted = false;
-    await expect(api.undoLast()).resolves.toEqual(original);
+    await expect(api.undoLast(undoToken)).resolves.toEqual(original);
     expect(await readFile(file)).toEqual(originalBytes);
-    await expect(api.undoLast()).rejects.toThrow("no change to undo");
+    await expect(api.undoLast(undoToken)).rejects.toThrow("no change to undo");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
