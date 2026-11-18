@@ -3,7 +3,7 @@
 <!-- keel:start -->
 | # | Slice | Done when | Levels | Owner | Status |
 |---|---|---|---|---|---|
-| 0 | Scaffold | The `electron-web` template's contract, browser and visual suites, real Electron smoke and installer smoke pass on their Tier 1 runners. Hosted pixel baselines and the first ledger rows are committed. | L0–L2, L4–L7 | solo | open |
+| 0 | Scaffold | The `electron-web` template's contract, browser and visual suites, real Electron smoke and installer smoke pass on their Tier 1 runners. Hosted pixel baselines and the first ledger rows are committed. | L0–L2, L4–L7 | solo | done |
 | 1 | Record transactions | Validation and exact minor-unit conversion pass unit tests. Native/mock contract parity, prior-schema load and failed commit recovery pass. Browser CRUD and currency controls pass, and real Electron reopens the same transaction after restart on Tier 1. | L0–L6 | solo | open |
 | 2 | Import a bank CSV | Parser tests cover delimiter, header, date order, signed or split amounts, quoting, rejections and existing duplicates. A real-file integration test imports 2,000 rows under five seconds and checks atomic failure. Browser mapping and preview pass, and real Electron imports via the native file port on Tier 1. | L0–L6 | solo | open |
 | 3 | Categories and rules | Rule precedence, category merge and uncategorisation pass unit and contract tests. Reopen preserves categories and rules, and the browser proves category assignment and rule application. | L0–L5 | solo | open |
@@ -17,6 +17,7 @@
 - Slice 0. Ruling: Use in-repository Keel, authorized PRs, and hosted workflows for all platform proof — this is an unattended solo run — cost if wrong: CI or repository settings can be restored and rerun.
 - Slice 0. Ruling: Use `com.example.tally` and confine the scaffold rename pass to app files — no publisher identifier was provided and the embedded skills are inputs — cost if wrong: a future bundle-ID change needs a user-data migration.
 - Slice 0. Ruling: Dispatch snapshots from a working branch and open the PR with `gh` — keeps the repository's Actions bot approval permissions unchanged and starts CI for the captured commit — cost if wrong: a manual PR replaces the template's bot PR.
+- Slice 0. Ruling: Accept the isolated hosted macOS arm64 real-shell rerun alongside the normal CI run — the normal macOS real-shell job stayed queued and the rerun differs only in workflow scheduling — cost if wrong: the normal job must be rerun before treating a runner-specific defect as resolved.
 - Slice 1. Ruling: Use the system currency when supported and allow changing it while the ledger and budgets are empty — changing the unit on existing amounts would misrepresent them — cost if wrong: a separate currency migration would be needed.
 - Slice 1. Ruling: Prepare transaction recording on an isolated branch while GitHub queues the scaffold's macOS real-shell job — the other scaffold lanes already have hosted proof — cost if wrong: the branch must wait or rebase before merging if the scaffold job finds a defect.
 - Slice 1. Ruling: Retire the proven template greeting with its demo fixtures when the transaction UI replaces it — the product's replacement checks exercise the same mock, visual, preload, and real-shell paths — cost if wrong: a lost harness assertion must be restored in the new journey.
