@@ -31,6 +31,8 @@ const bridge: LedgerApi = {
   applyPayeeRules: () => invoke("applyPayeeRules"),
   getMonth: (month) => invoke("getMonth", month),
   setBudget: (budget) => invoke("setBudget", budget),
+  exportCsv: (filter) => invoke("exportCsv", filter),
+  undoLast: () => invoke("undoLast"),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

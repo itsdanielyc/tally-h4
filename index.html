@@ -22,7 +22,10 @@
     </aside>
     <main id="workspace">
       <section id="view" aria-labelledby="screen-title"></section>
-      <p id="notice" role="status" aria-atomic="true"></p>
+      <div class="feedback">
+        <p id="notice" role="status" aria-atomic="true"></p>
+        <button id="undo" type="button" hidden>Undo</button>
+      </div>
       <p id="error" role="alert" aria-atomic="true"></p>
     </main>
     <script type="module" src="/src/main.ts"></script>

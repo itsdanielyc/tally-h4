@@ -1,4 +1,4 @@
-import type { Ledger, Transaction } from "./ledger";
+import type { LedgerSnapshot, Transaction } from "./ledger";
 
 export const dateOrders = ["YMD", "DMY", "MDY"] as const;
 export type DateOrder = typeof dateOrders[number];
@@ -41,7 +41,7 @@ export interface ImportReview {
 }
 
 export interface ImportReceipt {
-  readonly ledger: Ledger;
+  readonly ledger: LedgerSnapshot;
   readonly imported: number;
   readonly duplicateCount: number;
   readonly rejections: readonly RejectedRow[];

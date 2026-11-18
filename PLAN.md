@@ -8,7 +8,7 @@
 | 2 | Import a bank CSV | Parser tests cover delimiter, header, date order, signed or split amounts, quoting, rejections and existing duplicates. A real-file integration test imports 2,000 rows under five seconds and checks atomic failure. Browser mapping and preview pass, and real Electron imports via the native file port on Tier 1. | L0–L6 | solo | done |
 | 3 | Categories and rules | Rule precedence, category merge and uncategorisation pass unit and contract tests. Reopen preserves categories and rules, and the browser proves category assignment and rule application. | L0–L5 | solo | done |
 | 4 | Monthly summary and budgets | Exact aggregation tests cover month boundaries, signed totals and remaining/over budget. The contract saves budgets, and browser tests navigate months and reconcile the displayed amounts. | L0–L2, L4–L5 | solo | done |
-| 5 | Find, export, undo | Tests prove inclusive filters, lossless CSV round trip, and atomic one-shot undo for delete, merge and import. Browser tests exercise filters and undo, and real Electron exports a filtered CSV through the native file port on Tier 1. | L0–L6 | solo | open |
+| 5 | Find, export, undo | Tests prove inclusive filters, lossless CSV round trip, and atomic one-shot undo for delete, merge and import. Browser tests exercise filters and undo, and real Electron exports a filtered CSV through the native file port on Tier 1. | L0–L6 | solo | done |
 | 6 | Release readiness | Version and changelog are ready, the post-slice review is complete, and the unsigned pre-tag workflow produces and smoke-tests every Tier 1 bundle. The release commit, CI and artifact evidence are recorded. | L0–L7 | solo | open |
 
 ## Rulings
@@ -28,5 +28,6 @@
 - Slice 4. Ruling: Measure budgets against spending alone and keep one recurring monthly limit per category — income is shown separately and the slice requests a monthly limit — cost if wrong: month-specific budgets would require a later schema change.
 - Slice 4. Ruling: Add both limits when categories merge and remove a limit when its category is deleted — the surviving amount follows the surviving transactions — cost if wrong: the recurring destination budget can be edited after the merge.
 - Slice 5. Ruling: Use a single session undo slot, cleared by the next effective ledger change — matches immediate one-shot recovery — cost if wrong: use cases requiring persisted history need a later design.
+- Slice 5. Ruling: Carry currency, category and note in Tally CSVs, with reversible protection for formula-like text — exact round trips need those details — cost if wrong: readers of the raw CSV may see a leading apostrophe on protected cells.
 - Slice 6. Ruling: Use unsigned packages per ADR 001 and run the release workflow by dispatch — proves the same bundle and smoke jobs before tagging — cost if wrong: signed distribution and tag publication need a separate run.
 <!-- keel:end -->

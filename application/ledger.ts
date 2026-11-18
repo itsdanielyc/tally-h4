@@ -1,4 +1,6 @@
-import type { Ledger, LedgerApi, Transaction } from "../contracts/ledger";
+import type { Ledger, LedgerApi, LedgerSnapshot, Transaction } from "../contracts/ledger";
+import type { UndoKind } from "../contracts/transfer";
+import { createExportCommand, type SaveCsv } from "./export-command";
 import { setBudget } from "../domain/budgets";
 import { resolveTransactionCategory } from "../domain/categories";
 import { validateCurrency } from "../domain/money";
@@ -8,12 +10,13 @@ import { createImportCommands, type PickCsv } from "./import-commands";
 import { createCategoryCommands } from "./category-commands";
 import { LedgerSession, type LedgerStore } from "./ledger-session";
 
-function view(ledger: Ledger): Ledger {
-  return { ...ledger, transactions: newestFirst(ledger.transactions) };
+function view(ledger: Ledger, undo?: UndoKind): LedgerSnapshot {
+  const snapshot = { ...ledger, transactions: newestFirst(ledger.transactions) };
+  return undo ? { ...snapshot, undo } : snapshot;
 }
 
-function committed(ledger: Ledger): { ledger: Ledger; result: Ledger } {
-  return { ledger, result: view(ledger) };
+function committed(ledger: Ledger): { ledger: Ledger; result: typeof view } {
+  return { ledger, result: view };
 }
 
 function replaceTransaction(ledger: Ledger, transaction: Transaction): Ledger {
@@ -29,12 +32,15 @@ export function createLedgerApi(
   store: LedgerStore,
   makeId: () => string = () => crypto.randomUUID(),
   pickCsv: PickCsv = async () => null,
+  saveCsv: SaveCsv = async () => null,
 ): LedgerApi {
   const session = new LedgerSession(store);
   return {
     ...createImportCommands(session, pickCsv, view, makeId),
     ...createCategoryCommands(session, view, makeId),
     loadLedger: () => session.read(view),
+    exportCsv: createExportCommand(session, saveCsv),
+    undoLast: () => session.undoLast(view),
     saveTransaction: (input) => session.change((ledger) => {
       const fields = validateTransaction(input);
       const category = resolveTransactionCategory(ledger.categories, fields.category);
@@ -52,7 +58,7 @@ export function createLedgerApi(
         throw new Error("This transaction no longer exists.");
       }
       return committed({ ...ledger, transactions });
-    }),
+    }, "delete"),
     setCurrency: (value) => session.change((ledger) => {
       const currency = validateCurrency(value);
       if (currency === ledger.currency) return committed(ledger);

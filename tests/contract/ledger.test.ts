@@ -23,12 +23,42 @@ it("keeps the native ledger and browser mock aligned through CRUD and currency s
       await expect(api.saveTransaction({ ...transaction, id: "test-record", note: "New note" })).resolves.toMatchObject({
         transactions: [{ id: "test-record", note: "New note" }],
       });
-      await expect(api.deleteTransaction("test-record")).resolves.toEqual({ currency: "GBP", ...empty });
+      await expect(api.deleteTransaction("test-record")).resolves.toEqual({ currency: "GBP", ...empty, undo: "delete" });
       await expect(api.deleteTransaction("test-record")).rejects.toThrow("no longer exists");
     }
     await expect(native.loadLedger()).resolves.toEqual(await mock.loadLedger());
   } finally {
     await rm(profile, { recursive: true, force: true });
+  }
+});
+
+it("offers one undo for delete, merge and import and clears it after another effective mutation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tally-undo-contract-"));
+  try {
+    const pick = async () => ({ name: "bank.csv", contents: "Date,Payee,Amount\n2026-11-18,Rail,-1.25" });
+    const mock = createMock("USD", undefined, pick);
+    const native = createLedgerApi(new FileLedgerStore(join(directory, "ledger.json"), "USD"), undefined, pick);
+    for (const api of [mock, native]) {
+      const added = await api.saveTransaction({ date: "2026-11-18", payee: "Market", amountMinor: -212, category: "Food" });
+      await expect(api.deleteTransaction(added.transactions[0].id)).resolves.toMatchObject({ undo: "delete", transactions: [] });
+      await expect(api.undoLast()).resolves.toEqual(added);
+      await expect(api.undoLast()).rejects.toThrow("no change to undo");
+      await api.addCategory("Travel");
+      await api.setBudget({ category: "Food", amountMinor: 2400 });
+      await api.addPayeeRule({ contains: "MARKET", category: "Food" });
+      const beforeMerge = await api.loadLedger();
+      await expect(api.mergeCategory({ from: "Food", to: "Travel" })).resolves.toMatchObject({ undo: "merge" });
+      await expect(api.undoLast()).resolves.toEqual(beforeMerge);
+      const source = await api.chooseImportFile();
+      const request = { token: source!.token, mapping: source!.suggested };
+      await expect(api.confirmImport(request)).resolves.toMatchObject({ imported: 1, ledger: { undo: "import" } });
+      await expect(api.undoLast()).resolves.toEqual(beforeMerge);
+      await api.confirmImport(request);
+      await api.addCategory("Home");
+      await expect(api.undoLast()).rejects.toThrow("no change to undo");
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

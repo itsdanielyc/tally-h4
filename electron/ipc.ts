@@ -35,4 +35,6 @@ export function registerLedgerIpc(ledger: LedgerApi, rendererUrl: string): void 
   register("applyPayeeRules", ledger.applyPayeeRules);
   register("getMonth", ledger.getMonth);
   register("setBudget", ledger.setBudget);
+  register("exportCsv", ledger.exportCsv);
+  register("undoLast", ledger.undoLast);
 }

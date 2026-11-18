@@ -17,4 +17,6 @@ export const channels = {
   applyPayeeRules: "tally:apply-payee-rules",
   getMonth: "tally:get-month",
   setBudget: "tally:set-budget",
+  exportCsv: "tally:export-csv",
+  undoLast: "tally:undo-last",
 } satisfies Record<keyof LedgerApi, string>;
