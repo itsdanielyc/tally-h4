@@ -45,6 +45,7 @@ interface PreparedImport {
 // Time O(file characters plus existing transactions). Space O(existing transactions plus file rows).
 export function prepareImport(
   document: CsvDocument, mapping: CsvMapping, currency: string, existing: readonly Transaction[],
+  matchRule?: (payee: string) => string,
 ): PreparedImport {
   checkMapping(mapping, document.columns.length);
   const known = new Set(existing.map(identity));
@@ -59,6 +60,7 @@ export function prepareImport(
         date: parseCsvDate(row.cells[mapping.date], mapping.dateOrder),
         payee: row.cells[mapping.payee],
         amountMinor: readAmount(row.cells, mapping.amount, currency),
+        category: matchRule?.(row.cells[mapping.payee]),
       });
       if (known.has(identity(transaction))) duplicateCount++;
       else accepted.push(transaction);

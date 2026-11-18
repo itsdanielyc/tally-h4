@@ -26,4 +26,11 @@ export function registerLedgerIpc(ledger: LedgerApi, rendererUrl: string): void 
   register("chooseImportFile", ledger.chooseImportFile);
   register("previewImport", ledger.previewImport);
   register("confirmImport", ledger.confirmImport);
+  register("addCategory", ledger.addCategory);
+  register("renameCategory", ledger.renameCategory);
+  register("mergeCategory", ledger.mergeCategory);
+  register("deleteCategory", ledger.deleteCategory);
+  register("addPayeeRule", ledger.addPayeeRule);
+  register("deletePayeeRule", ledger.deletePayeeRule);
+  register("applyPayeeRules", ledger.applyPayeeRules);
 }

@@ -1,20 +1,10 @@
 import { dateOrders, type CsvDelimiter, type CsvMapping, type ImportRequest, type ImportSource } from "../contracts/import";
-import { command, element, formText } from "./dom";
+import { command, element, formText, selectField } from "./dom";
 import { renderImportPreview } from "./import-preview";
 import type { ViewContext } from "./view-context";
 
 const delimiters: Record<CsvDelimiter, string> = { ",": "Comma", ";": "Semicolon", "\t": "Tab", "|": "Pipe" };
 const orderLabels = { YMD: "Year / month / day", DMY: "Day / month / year", MDY: "Month / day / year" };
-
-function selectField(labelText: string, name: string, options: readonly (readonly [string, string])[], value: string): HTMLLabelElement {
-  const label = element("label", labelText);
-  const select = element("select");
-  select.name = name;
-  for (const [key, text] of options) select.add(new Option(text, key));
-  select.value = value;
-  label.append(select);
-  return label;
-}
 
 function readMapping(form: HTMLFormElement): CsvMapping {
   const data = new FormData(form);

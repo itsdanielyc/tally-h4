@@ -11,18 +11,19 @@ it("keeps the native ledger and browser mock aligned through CRUD and currency s
   try {
     const mock = createMock("USD", () => "test-record");
     const native = createLedgerApi(new FileLedgerStore(join(profile, "ledger.json"), "USD"), () => "test-record");
+    const empty = { transactions: [], categories: [], rules: [] };
     for (const api of [mock, native]) {
-      await expect(api.loadLedger()).resolves.toEqual({ currency: "USD", transactions: [] });
-      await expect(api.setCurrency("GBP")).resolves.toEqual({ currency: "GBP", transactions: [] });
+      await expect(api.loadLedger()).resolves.toEqual({ currency: "USD", ...empty });
+      await expect(api.setCurrency("GBP")).resolves.toEqual({ currency: "GBP", ...empty });
       const transaction = { date: "2026-11-18", payee: "Market", amountMinor: -1299 };
       await expect(api.saveTransaction(transaction)).resolves.toEqual({
-        currency: "GBP", transactions: [{ ...transaction, id: "test-record", category: "", note: "" }],
+        currency: "GBP", ...empty, transactions: [{ ...transaction, id: "test-record", category: "", note: "" }],
       });
       await expect(api.setCurrency("EUR")).rejects.toThrow("ledger is empty");
       await expect(api.saveTransaction({ ...transaction, id: "test-record", note: "New note" })).resolves.toMatchObject({
         transactions: [{ id: "test-record", note: "New note" }],
       });
-      await expect(api.deleteTransaction("test-record")).resolves.toEqual({ currency: "GBP", transactions: [] });
+      await expect(api.deleteTransaction("test-record")).resolves.toEqual({ currency: "GBP", ...empty });
       await expect(api.deleteTransaction("test-record")).rejects.toThrow("no longer exists");
     }
     await expect(native.loadLedger()).resolves.toEqual(await mock.loadLedger());
@@ -43,14 +44,20 @@ it("returns the same source, review and commit result for mock and native CSV co
     };
     const mock = createMock("USD", nextId(), file);
     const native = createLedgerApi(new FileLedgerStore(join(directory, "ledger.json"), "USD"), nextId(), file);
+    for (const api of [mock, native]) {
+      await api.addCategory("Groceries");
+      await api.addPayeeRule({ contains: "MARKET", category: "Groceries" });
+    }
     const source = await mock.chooseImportFile();
     await expect(native.chooseImportFile()).resolves.toEqual(source);
     const request = { token: source!.token, mapping: source!.suggested };
     const review = await mock.previewImport(request);
     expect(review).toMatchObject({ acceptedCount: 1, duplicateCount: 0, rejections: [{ line: 3 }] });
+    expect(review.preview).toMatchObject([{ payee: "Market", category: "Groceries" }]);
     await expect(native.previewImport(request)).resolves.toEqual(review);
     const receipt = await mock.confirmImport(request);
     await expect(native.confirmImport(request)).resolves.toEqual(receipt);
+    expect(receipt.ledger.transactions).toMatchObject([{ category: "Groceries" }]);
     await expect(native.previewImport(request)).resolves.toMatchObject({ acceptedCount: 0, duplicateCount: 1 });
   } finally {
     await rm(directory, { recursive: true, force: true });
