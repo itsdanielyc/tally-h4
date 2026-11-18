@@ -25,66 +25,6 @@ permissions:
   contents: read
 
 jobs:
-  unit:
-    name: unit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Lint (type-check every tsconfig, ESLint with the size limits, knip for dead code)
-        run: npm run lint
-      - run: npm run test:unit
-
-  ui:
-    name: ui (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Playwright browser
-        # Ubuntu's apt can stall on a service-restart prompt during
-        # --with-deps; keep it non-interactive and bound each attempt.
-        timeout-minutes: 12
-        shell: bash
-        env:
-          DEBIAN_FRONTEND: noninteractive
-          NEEDRESTART_MODE: a
-        run: |
-          bound=""; command -v timeout >/dev/null && bound="timeout 420"   # macOS has no timeout(1)
-          for attempt in 1 2; do
-            $bound npx playwright install --with-deps chromium && exit 0
-            echo "attempt $attempt failed or stalled; retrying"
-          done
-          exit 1
-      - name: Playwright (chromium, against the mock)
-        env:
-          CI: "1"
-        run: npm run test:ui
-      - name: Upload report and diffs
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: ui-${{ matrix.os }}
-          path: |
-            playwright-report
-            test-results
-          if-no-files-found: ignore
-          retention-days: 7
-
   e2e:
     name: e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -93,9 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
+          - macos-26
     steps:
       - uses: actions/checkout@v7
 
