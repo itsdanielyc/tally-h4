@@ -19,7 +19,7 @@
 | Preview and import a CSV atomically, report rejected rows and skip duplicates | L1, L2, L3, L4, L6 | `tests/unit/import.test.ts`, `tests/contract/ledger.test.ts`, `tests/integration/csv-import.test.ts`, `tests/ui/import.spec.ts`, `tests/e2e/import.spec.ts` |
 | Manage categories and apply payee rules to existing and imported rows | L1, L2, L3, L4 | `tests/unit/categories.test.ts`, `tests/contract/ledger.test.ts`, `tests/integration/category-store.test.ts`, `tests/ui/categories.spec.ts` |
 | Reconcile monthly totals and budget balances | L1, L2, L4, L6 | `tests/unit/month.test.ts`, `tests/contract/ledger.test.ts`, `tests/ui/month.spec.ts`, `tests/e2e/import.spec.ts` |
-| Filter, export, import the result and undo | L1, L2, L3, L4, L6 | Pending slice 5 |
+| Filter, export, import the result and undo | L1, L2, L3, L4, L6 | `tests/unit/find.test.ts`, `tests/contract/ledger.test.ts`, `tests/integration/csv-export.test.ts`, `tests/ui/find.spec.ts`, `tests/e2e/export.spec.ts` |
 | Install, launch and uninstall each native bundle | L7 | `scripts/installer-test.ps1` and `scripts/installer-test.sh` |
 
 Visuals use shared ARIA and 8 px geometry baselines, and hosted per-OS pixel

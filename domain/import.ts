@@ -1,7 +1,10 @@
 import { dateOrders, type CsvMapping, type ImportReview, type RejectedRow } from "../contracts/import";
-import type { Transaction } from "../contracts/ledger";
+import type { Ledger, Transaction } from "../contracts/ledger";
+import { createRuleMatcher } from "./categories";
 import type { CsvDocument } from "./csv-document";
+import { decodeExportText, exportIndex } from "./csv-export";
 import { parseCsvAmount, parseCsvDate } from "./csv-values";
+import { validateCurrency } from "./money";
 import { isRecord, validateTransaction } from "./transactions";
 
 const PREVIEW_LIMIT = 8;
@@ -41,14 +44,44 @@ interface PreparedImport {
   readonly review: ImportReview;
 }
 
+function importCurrency(document: CsvDocument, ledger: Ledger): string {
+  if (!document.tallyExport) return ledger.currency;
+  for (const row of document.rows) {
+    if (row.issue || row.cells.length !== document.columns.length) continue;
+    let currency: string;
+    try {
+      currency = validateCurrency(row.cells[exportIndex.currency]);
+    } catch {
+      continue;
+    }
+    if (ledger.currency !== currency && (ledger.transactions.length || ledger.budgets.length)) {
+      throw new Error("This Tally CSV uses " + currency + ". Import it into a ledger that uses the same currency.");
+    }
+    return currency;
+  }
+  return ledger.currency;
+}
+
+function readRow(
+  cells: readonly string[], mapping: CsvMapping, currency: string, tallyExport: boolean, matchRule: (payee: string) => string,
+): Candidate {
+  const payee = tallyExport ? decodeExportText(cells[mapping.payee]) : cells[mapping.payee];
+  if (tallyExport && cells[exportIndex.currency] !== currency) throw new Error("The row uses a different or invalid currency.");
+  return validateTransaction({
+    date: parseCsvDate(cells[mapping.date], mapping.dateOrder), payee,
+    amountMinor: readAmount(cells, mapping.amount, currency),
+    category: tallyExport ? decodeExportText(cells[exportIndex.category]) : matchRule(payee),
+    note: tallyExport ? decodeExportText(cells[exportIndex.note]) : "",
+  });
+}
+
 /** Parses and classifies every row against one committed ledger snapshot. */
 // Time O(file characters plus existing transactions). Space O(existing transactions plus file rows).
-export function prepareImport(
-  document: CsvDocument, mapping: CsvMapping, currency: string, existing: readonly Transaction[],
-  matchRule?: (payee: string) => string,
-): PreparedImport {
+export function prepareImport(document: CsvDocument, mapping: CsvMapping, ledger: Ledger): PreparedImport {
   checkMapping(mapping, document.columns.length);
-  const known = new Set(existing.map(identity));
+  const currency = importCurrency(document, ledger);
+  const matchRule = createRuleMatcher(ledger.rules);
+  const known = new Set(ledger.transactions.map(identity));
   const accepted: Candidate[] = [];
   const rejections: RejectedRow[] = [];
   let duplicateCount = 0;
@@ -56,12 +89,7 @@ export function prepareImport(
     try {
       if (row.issue) throw new Error(row.issue);
       if (row.cells.length !== document.columns.length) throw new Error("The row has a different number of columns from the header.");
-      const transaction = validateTransaction({
-        date: parseCsvDate(row.cells[mapping.date], mapping.dateOrder),
-        payee: row.cells[mapping.payee],
-        amountMinor: readAmount(row.cells, mapping.amount, currency),
-        category: matchRule?.(row.cells[mapping.payee]),
-      });
+      const transaction = readRow(row.cells, mapping, currency, document.tallyExport, matchRule);
       if (known.has(identity(transaction))) duplicateCount++;
       else accepted.push(transaction);
     } catch (error) {

@@ -1,6 +1,6 @@
 import type { ImportRequest, ImportSource } from "../contracts/import";
-import type { Ledger, LedgerApi } from "../contracts/ledger";
-import { createRuleMatcher } from "../domain/categories";
+import type { Ledger, LedgerApi, LedgerSnapshot } from "../contracts/ledger";
+import type { UndoKind } from "../contracts/transfer";
 import { parseCsvDocument, type CsvDocument } from "../domain/csv-document";
 import { prepareImport } from "../domain/import";
 import type { LedgerSession } from "./ledger-session";
@@ -16,7 +16,7 @@ type ImportCommands = Pick<LedgerApi, "chooseImportFile" | "previewImport" | "co
 
 /** Owns the selected source and the preview/commit flow for one application session. */
 export function createImportCommands(
-  session: LedgerSession, pickCsv: PickCsv, view: (ledger: Ledger) => Ledger, makeId: () => string,
+  session: LedgerSession, pickCsv: PickCsv, view: (ledger: Ledger, undo?: UndoKind) => LedgerSnapshot, makeId: () => string,
 ): ImportCommands {
   let pending: { readonly source: ImportSource; readonly document: CsvDocument } | undefined;
 
@@ -40,17 +40,23 @@ export function createImportCommands(
       return source;
     },
     previewImport: (request) => session.read((ledger) =>
-      prepareImport(selected(request), request.mapping, ledger.currency, ledger.transactions, createRuleMatcher(ledger.rules)).review),
+      prepareImport(selected(request), request.mapping, ledger).review),
     confirmImport: (request) => session.change((ledger) => {
-      const { accepted, review } = prepareImport(
-        selected(request), request.mapping, ledger.currency, ledger.transactions, createRuleMatcher(ledger.rules),
-      );
-      const rows = accepted.map((entry) => ({ ...entry, id: makeId() }));
-      const updated = rows.length ? { ...ledger, transactions: [...ledger.transactions, ...rows] } : ledger;
+      const document = selected(request);
+      const { accepted, review } = prepareImport(document, request.mapping, ledger);
+      const ordered = document.tallyExport ? [...accepted].reverse() : accepted;
+      const rows = ordered.map((entry) => ({ ...entry, id: makeId() }));
+      const categories = new Set(ledger.categories);
+      for (const row of rows) if (row.category) categories.add(row.category);
+      const updated = rows.length ? {
+        ...ledger, currency: review.currency, transactions: [...ledger.transactions, ...rows], categories: [...categories],
+      } : ledger;
       return {
         ledger: updated,
-        result: { ledger: view(updated), imported: rows.length, duplicateCount: review.duplicateCount, rejections: review.rejections },
+        result: (committed, undo) => ({
+          ledger: view(committed, undo), imported: rows.length, duplicateCount: review.duplicateCount, rejections: review.rejections,
+        }),
       };
-    }),
+    }, "import"),
   };
 }

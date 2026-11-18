@@ -1,5 +1,6 @@
 import type { CsvDelimiter, CsvMapping } from "../contracts/import";
 import { scanCsv, type CsvRecord } from "./csv-scanner";
+import { exportHeaders } from "./csv-export";
 
 const DELIMITERS: readonly CsvDelimiter[] = [",", ";", "\t", "|"];
 const SAMPLE_CHARACTERS = 64_000;
@@ -23,6 +24,7 @@ export interface CsvDocument {
   readonly columns: readonly string[];
   readonly suggested: CsvMapping;
   readonly rows: readonly CsvRecord[];
+  readonly tallyExport: boolean;
 }
 
 interface HeaderCandidate {
@@ -96,5 +98,7 @@ export function parseCsvDocument(raw: string): CsvDocument {
     columns,
     suggested: suggest(columns),
     rows: records.filter((record) => record.line > header.line),
+    tallyExport: delimiter === "," && columns.length === exportHeaders.length &&
+      exportHeaders.every((label, index) => label === columns[index]),
   };
 }

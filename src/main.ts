@@ -1,4 +1,4 @@
-import type { Ledger } from "../contracts/ledger";
+import type { LedgerSnapshot } from "../contracts/ledger";
 import { connectBackend, type Backend } from "./api";
 import { renderCategories } from "./categories-view";
 import { element, required } from "./dom";
@@ -18,8 +18,9 @@ class App {
   private readonly view = required(document, "#view");
   private readonly notice = required(document, "#notice");
   private readonly error = required(document, "#error");
+  private readonly undo = required<HTMLButtonElement>(document, "#undo");
   private readonly navigation = document.querySelectorAll<HTMLButtonElement>("nav button[data-screen]");
-  private ledger?: Ledger;
+  private ledger?: LedgerSnapshot;
   private screen: Screen = "transactions";
 
   constructor(private readonly backend: Backend) {}
@@ -31,8 +32,25 @@ class App {
     for (const button of this.navigation) {
       button.addEventListener("click", () => this.navigate(button.dataset.screen));
     }
+    this.undo.addEventListener("click", () => {
+      this.undo.disabled = true;
+      void this.backend.undoLast().then((ledger) => {
+        this.ledger = ledger;
+        this.render();
+        this.announce("Change undone.");
+      }).catch((error: unknown) => this.report(error)).finally(() => { this.undo.disabled = false; });
+    });
     this.ledger = await this.backend.loadLedger();
     this.render();
+  }
+
+  private announce(message: string): void {
+    this.error.textContent = "";
+    this.notice.textContent = message;
+  }
+
+  private report(error: unknown): void {
+    this.error.textContent = error instanceof Error ? error.message : "The ledger is unavailable.";
   }
 
   private navigate(screen?: string): void {
@@ -50,18 +68,18 @@ class App {
       else button.removeAttribute("aria-current");
     }
     this.view.replaceChildren();
+    this.undo.hidden = this.ledger.undo === undefined;
+    if (this.ledger.undo) this.undo.textContent = "Undo " + this.ledger.undo;
     const context: ViewContext = {
       backend: this.backend,
       ledger: this.ledger,
       commit: async (operation, message) => {
         this.ledger = await operation();
         this.render();
-        this.error.textContent = "";
-        this.notice.textContent = message;
+        this.announce(message);
       },
-      report: (error) => {
-        this.error.textContent = error instanceof Error ? error.message : "The ledger is unavailable.";
-      },
+      announce: (message) => this.announce(message),
+      report: (error) => this.report(error),
     };
     renderScreen[this.screen](this.view, context);
   }

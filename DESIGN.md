@@ -7,4 +7,5 @@
 - Slice 2. Show the detected delimiter and header line next to editable mappings. Preview shows the first accepted rows and all rejected line numbers. A mapping change clears its preview before it can be committed.
 - Slice 3. Place categories and payee rules beside each other where space allows. The transaction editor suggests category names, and a category delete explains the effect on existing transactions and rules.
 - Slice 4. Keep month navigation above income, spending and net. Put the remaining or over-budget amount beside its category and pair it with a simple spending bar.
+- Slice 5. Filter the table in place and export its visible selection. Show the available one-shot undo beside the latest operation feedback.
 <!-- keel:end -->

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLedgerApi } from "../application/ledger";
 import { currencyForLocale } from "../domain/money";
-import { pickNativeCsv } from "./files";
+import { pickNativeCsv, saveNativeCsv } from "./files";
 import { registerLedgerIpc } from "./ipc";
 import { FileLedgerStore, LEDGER_FILENAME } from "./store/file-ledger";
 
@@ -34,7 +34,7 @@ function createWindow(): void {
 
 function start(): void {
   const store = new FileLedgerStore(join(app.getPath("userData"), LEDGER_FILENAME), currencyForLocale(app.getLocale()));
-  registerLedgerIpc(createLedgerApi(store, undefined, pickNativeCsv), rendererUrl);
+  registerLedgerIpc(createLedgerApi(store, undefined, pickNativeCsv, saveNativeCsv), rendererUrl);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

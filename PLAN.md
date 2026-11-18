@@ -28,5 +28,6 @@
 - Slice 4. Ruling: Measure budgets against spending alone and keep one recurring monthly limit per category — income is shown separately and the slice requests a monthly limit — cost if wrong: month-specific budgets would require a later schema change.
 - Slice 4. Ruling: Add both limits when categories merge and remove a limit when its category is deleted — the surviving amount follows the surviving transactions — cost if wrong: the recurring destination budget can be edited after the merge.
 - Slice 5. Ruling: Use a single session undo slot, cleared by the next effective ledger change — matches immediate one-shot recovery — cost if wrong: use cases requiring persisted history need a later design.
+- Slice 5. Ruling: Carry currency, category and note in Tally CSVs, with reversible protection for formula-like text — exact round trips need those details — cost if wrong: readers of the raw CSV may see a leading apostrophe on protected cells.
 - Slice 6. Ruling: Use unsigned packages per ADR 001 and run the release workflow by dispatch — proves the same bundle and smoke jobs before tagging — cost if wrong: signed distribution and tag publication need a separate run.
 <!-- keel:end -->

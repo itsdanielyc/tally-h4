@@ -1,4 +1,5 @@
-import type { Ledger, LedgerApi } from "../contracts/ledger";
+import type { Ledger, LedgerApi, LedgerSnapshot } from "../contracts/ledger";
+import type { UndoKind } from "../contracts/transfer";
 import { applyRules, createCategory, mergeCategory, removeCategory, renameCategory, validateRule } from "../domain/categories";
 import type { LedgerSession } from "./ledger-session";
 
@@ -7,19 +8,19 @@ type CategoryCommands = Pick<LedgerApi,
 
 /** Runs category and rule mutations through the common atomic ledger session. */
 export function createCategoryCommands(
-  session: LedgerSession, view: (ledger: Ledger) => Ledger, makeId: () => string,
+  session: LedgerSession, view: (ledger: Ledger, undo?: UndoKind) => LedgerSnapshot, makeId: () => string,
 ): CategoryCommands {
-  function change(mutation: (previous: Ledger) => Ledger): Promise<Ledger> {
+  function change(mutation: (previous: Ledger) => Ledger, undo?: UndoKind): Promise<LedgerSnapshot> {
     return session.change((previous) => {
       const ledger = mutation(previous);
-      return { ledger, result: view(ledger) };
-    });
+      return { ledger, result: view };
+    }, undo);
   }
   return {
     addCategory: (name) => change((ledger) => createCategory(ledger, name)),
     renameCategory: (input) => change((ledger) => renameCategory(ledger, input)),
-    mergeCategory: (input) => change((ledger) => mergeCategory(ledger, input)),
-    deleteCategory: (name) => change((ledger) => removeCategory(ledger, name)),
+    mergeCategory: (input) => change((ledger) => mergeCategory(ledger, input), "merge"),
+    deleteCategory: (name) => change((ledger) => removeCategory(ledger, name), "delete"),
     addPayeeRule: (input) => change((ledger) => {
       const rule = { ...validateRule(input, ledger.categories), id: makeId() };
       return { ...ledger, rules: [...ledger.rules, rule] };
@@ -28,7 +29,7 @@ export function createCategoryCommands(
       const rules = ledger.rules.filter((rule) => rule.id !== id);
       if (rules.length === ledger.rules.length) throw new Error("This rule no longer exists.");
       return { ...ledger, rules };
-    }),
+    }, "delete"),
     applyPayeeRules: () => change(applyRules),
   };
 }

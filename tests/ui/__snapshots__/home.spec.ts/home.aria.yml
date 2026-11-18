@@ -10,6 +10,12 @@
 - main:
   - region "Transactions":
     - heading "Transactions" [level=1]
+    - button "Export CSV" [disabled]
     - button "Add transaction"
+    - search "Find transactions":
+      - text: Search transactions
+      - searchbox "Search transactions"
+      - button "Clear filters"
+      - group: Filters
     - heading "No transactions yet" [level=2]
-    - paragraph: Add a transaction to start your ledger.
+    - paragraph: Add a transaction or import a bank CSV to start your ledger.
