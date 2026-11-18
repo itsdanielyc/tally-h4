@@ -1,0 +1,26 @@
+# Tally v0.1.0 plan
+
+<!-- keel:start -->
+| # | Slice | Done when | Levels | Owner | Status |
+|---|---|---|---|---|---|
+| 0 | Scaffold | The `electron-web` template's contract, browser and visual suites, real Electron smoke and installer smoke pass on their Tier 1 runners. Hosted pixel baselines and the first ledger rows are committed. | L0–L2, L4–L7 | solo | open |
+| 1 | Record transactions | Validation and exact minor-unit conversion pass unit tests. Native/mock contract parity, prior-schema load and failed commit recovery pass. Browser CRUD and currency controls pass, and real Electron reopens the same transaction after restart on Tier 1. | L0–L6 | solo | open |
+| 2 | Import a bank CSV | Parser tests cover delimiter, header, date order, signed or split amounts, quoting, rejections and existing duplicates. A real-file integration test imports 2,000 rows under five seconds and checks atomic failure. Browser mapping and preview pass, and real Electron imports via the native file port on Tier 1. | L0–L6 | solo | open |
+| 3 | Categories and rules | Rule precedence, category merge and uncategorisation pass unit and contract tests. Reopen preserves categories and rules, and the browser proves category assignment and rule application. | L0–L5 | solo | open |
+| 4 | Monthly summary and budgets | Exact aggregation tests cover month boundaries, signed totals and remaining/over budget. The contract saves budgets, and browser tests navigate months and reconcile the displayed amounts. | L0–L2, L4–L5 | solo | open |
+| 5 | Find, export, undo | Tests prove inclusive filters, lossless CSV round trip, and atomic one-shot undo for delete, merge and import. Browser tests exercise filters and undo, and real Electron exports a filtered CSV through the native file port on Tier 1. | L0–L6 | solo | open |
+| 6 | Release readiness | Version and changelog are ready, the post-slice review is complete, and the unsigned pre-tag workflow produces and smoke-tests every Tier 1 bundle. The release commit, CI and artifact evidence are recorded. | L0–L7 | solo | open |
+
+## Rulings
+
+- Slice 0. Ruling: Treat the embedded skill templates as inventory inputs only — the root contains no app code — cost if wrong: scaffold would halt on a file conflict.
+- Slice 0. Ruling: Use in-repository Keel, authorized PRs, and hosted workflows for all platform proof — this is an unattended solo run — cost if wrong: CI or repository settings can be restored and rerun.
+- Slice 0. Ruling: Use `com.example.tally` and confine the scaffold rename pass to app files — no publisher identifier was provided and the embedded skills are inputs — cost if wrong: a future bundle-ID change needs a user-data migration.
+- Slice 0. Ruling: Dispatch snapshots from a working branch and open the PR with `gh` — keeps the repository's Actions bot approval permissions unchanged and starts CI for the captured commit — cost if wrong: a manual PR replaces the template's bot PR.
+- Slice 1. Ruling: Use the system currency when supported and allow changing it while the ledger and budgets are empty — changing the unit on existing amounts would misrepresent them — cost if wrong: a separate currency migration would be needed.
+- Slice 2. Ruling: Check duplicates against the committed ledger at confirmation and preserve identical rows within the new batch — an empty ledger must reproduce separate identical transactions on round trip — cost if wrong: duplicate rows already present in a bank export are also preserved in its first import.
+- Slice 3. Ruling: Match payee substrings case-insensitively in creation order and apply rules only when the transaction has no category — preserves explicit choices and gives overlapping rules predictable precedence — cost if wrong: the user must edit or recreate the rules to change precedence.
+- Slice 4. Ruling: Measure budgets against spending alone and keep one recurring monthly limit per category — income is shown separately and the slice requests a monthly limit — cost if wrong: month-specific budgets would require a later schema change.
+- Slice 5. Ruling: Use a single session undo slot, cleared by the next effective ledger change — matches immediate one-shot recovery — cost if wrong: use cases requiring persisted history need a later design.
+- Slice 6. Ruling: Use unsigned packages per ADR 001 and run the release workflow by dispatch — proves the same bundle and smoke jobs before tagging — cost if wrong: signed distribution and tag publication need a separate run.
+<!-- keel:end -->
