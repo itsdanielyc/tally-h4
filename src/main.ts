@@ -1,12 +1,15 @@
 import type { Ledger } from "../contracts/ledger";
 import { connectBackend, type Backend } from "./api";
+import { renderCategories } from "./categories-view";
 import { element, required } from "./dom";
 import { renderImport } from "./import-view";
 import { renderSettings } from "./settings-view";
 import { renderTransactions } from "./transactions-view";
 import type { ViewContext } from "./view-context";
 
-const renderScreen = { transactions: renderTransactions, import: renderImport, settings: renderSettings };
+const renderScreen = {
+  transactions: renderTransactions, import: renderImport, categories: renderCategories, settings: renderSettings,
+};
 type Screen = keyof typeof renderScreen;
 
 class App {

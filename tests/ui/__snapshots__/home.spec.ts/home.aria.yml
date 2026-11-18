@@ -3,6 +3,7 @@
   - navigation "Ledger":
     - button "Transactions"
     - button "Import CSV"
+    - button "Categories"
     - button "Settings"
   - text: On this device mock
 - main:

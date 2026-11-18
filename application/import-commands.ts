@@ -1,5 +1,6 @@
 import type { ImportRequest, ImportSource } from "../contracts/import";
 import type { Ledger, LedgerApi } from "../contracts/ledger";
+import { createRuleMatcher } from "../domain/categories";
 import { parseCsvDocument, type CsvDocument } from "../domain/csv-document";
 import { prepareImport } from "../domain/import";
 import type { LedgerSession } from "./ledger-session";
@@ -39,9 +40,11 @@ export function createImportCommands(
       return source;
     },
     previewImport: (request) => session.read((ledger) =>
-      prepareImport(selected(request), request.mapping, ledger.currency, ledger.transactions).review),
+      prepareImport(selected(request), request.mapping, ledger.currency, ledger.transactions, createRuleMatcher(ledger.rules)).review),
     confirmImport: (request) => session.change((ledger) => {
-      const { accepted, review } = prepareImport(selected(request), request.mapping, ledger.currency, ledger.transactions);
+      const { accepted, review } = prepareImport(
+        selected(request), request.mapping, ledger.currency, ledger.transactions, createRuleMatcher(ledger.rules),
+      );
       const rows = accepted.map((entry) => ({ ...entry, id: makeId() }));
       const updated = rows.length ? { ...ledger, transactions: [...ledger.transactions, ...rows] } : ledger;
       return {

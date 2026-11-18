@@ -30,7 +30,7 @@ it("migrates an older ledger and serializes overlapping saves", async () => {
   await expect(reopened.loadLedger()).resolves.toMatchObject({
     currency: "USD", transactions: [{ payee: "Rail fare" }, { payee: "Corner Market" }],
   });
-  expect(JSON.parse(await readFile(file, "utf8"))).toMatchObject({ schema: 1 });
+  expect(JSON.parse(await readFile(file, "utf8"))).toMatchObject({ schema: 2 });
 });
 
 it("keeps the live ledger byte for byte when replacement fails", async () => {

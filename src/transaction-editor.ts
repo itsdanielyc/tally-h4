@@ -95,6 +95,13 @@ export function openTransactionEditor(context: ViewContext, previous?: Transacti
     input.maxLength = transactionLimits[field];
     input.value = previous?.[field] ?? "";
   }
+  if (context.ledger.categories.length) {
+    const suggestions = element("datalist");
+    suggestions.id = "category-suggestions";
+    for (const category of context.ledger.categories) suggestions.append(new Option(category));
+    required(form, "[name=category]").setAttribute("list", suggestions.id);
+    form.append(suggestions);
+  }
   bindEditor(form, dialog, context, previous);
   dialog.addEventListener("close", () => dialog.remove(), { once: true });
   document.body.append(dialog);

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { LedgerStore } from "../../application/ledger-session";
 import type { Ledger } from "../../contracts/ledger";
+import { newLedger } from "../../domain/ledger";
 import { replaceFileAtomically } from "./atomic-file";
 import { decodeLedger, encodeLedger } from "./schema";
 
@@ -20,7 +21,7 @@ export class FileLedgerStore implements LedgerStore {
       contents = await readFile(this.filename, "utf8");
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        return { currency: this.defaultCurrency, transactions: [] };
+        return newLedger(this.defaultCurrency);
       }
       throw new Error("The ledger could not be read.", { cause: error });
     }

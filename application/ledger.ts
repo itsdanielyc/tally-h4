@@ -1,7 +1,9 @@
 import type { Ledger, LedgerApi, Transaction } from "../contracts/ledger";
+import { resolveTransactionCategory } from "../domain/categories";
 import { validateCurrency } from "../domain/money";
 import { newestFirst, validateTransaction } from "../domain/transactions";
 import { createImportCommands, type PickCsv } from "./import-commands";
+import { createCategoryCommands } from "./category-commands";
 import { LedgerSession, type LedgerStore } from "./ledger-session";
 
 function view(ledger: Ledger): Ledger {
@@ -29,14 +31,18 @@ export function createLedgerApi(
   const session = new LedgerSession(store);
   return {
     ...createImportCommands(session, pickCsv, view, makeId),
+    ...createCategoryCommands(session, view, makeId),
     loadLedger: () => session.read(view),
     saveTransaction: (input) => session.change((ledger) => {
       const fields = validateTransaction(input);
+      const category = resolveTransactionCategory(ledger.categories, fields.category);
+      const updated = { ...ledger, categories: category.categories };
+      const details = { ...fields, category: category.name };
       if (input.id === undefined) {
-        const transaction = { ...fields, id: makeId() };
-        return committed({ ...ledger, transactions: [...ledger.transactions, transaction] });
+        const transaction = { ...details, id: makeId() };
+        return committed({ ...updated, transactions: [...ledger.transactions, transaction] });
       }
-      return committed(replaceTransaction(ledger, { ...fields, id: input.id }));
+      return committed(replaceTransaction(updated, { ...details, id: input.id }));
     }),
     deleteTransaction: (id) => session.change((ledger) => {
       const transactions = ledger.transactions.filter((entry) => entry.id !== id);

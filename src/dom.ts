@@ -1,3 +1,5 @@
+let selectLabels = 0;
+
 /** Creates a typed element and assigns content without interpreting ledger text as markup. */
 export function element<Tag extends keyof HTMLElementTagNameMap>(
   tag: Tag, text?: string, className?: string,
@@ -25,4 +27,30 @@ export function command(label: string, action: () => void, className = ""): HTML
 export function formText(form: FormData, name: string): string {
   const value = form.get(name);
   return typeof value === "string" ? value : "";
+}
+
+export function textField(text: string, name: string, maximum: number, initial = ""): HTMLLabelElement {
+  const label = element("label", text);
+  const input = element("input");
+  input.name = name;
+  input.maxLength = maximum;
+  input.value = initial;
+  input.required = true;
+  label.append(input);
+  return label;
+}
+
+export function selectField(
+  labelText: string, name: string, options: readonly (readonly [string, string])[], value: string,
+): HTMLLabelElement {
+  const label = element("label");
+  const caption = element("span", labelText);
+  caption.id = "select-label-" + ++selectLabels;
+  const select = element("select");
+  select.name = name;
+  select.setAttribute("aria-labelledby", caption.id);
+  for (const [key, text] of options) select.add(new Option(text, key));
+  select.value = value;
+  label.append(caption, select);
+  return label;
 }

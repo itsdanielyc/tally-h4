@@ -22,6 +22,13 @@ const bridge: LedgerApi = {
   chooseImportFile: () => invoke("chooseImportFile"),
   previewImport: (request) => invoke("previewImport", request),
   confirmImport: (request) => invoke("confirmImport", request),
+  addCategory: (name) => invoke("addCategory", name),
+  renameCategory: (change) => invoke("renameCategory", change),
+  mergeCategory: (change) => invoke("mergeCategory", change),
+  deleteCategory: (name) => invoke("deleteCategory", name),
+  addPayeeRule: (rule) => invoke("addPayeeRule", rule),
+  deletePayeeRule: (id) => invoke("deletePayeeRule", id),
+  applyPayeeRules: () => invoke("applyPayeeRules"),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

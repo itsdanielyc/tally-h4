@@ -6,7 +6,7 @@ function previewTable(review: ImportReview): HTMLTableElement {
   const table = element("table");
   table.setAttribute("aria-label", "Import preview");
   const headings = table.createTHead().insertRow();
-  for (const name of ["Date", "Payee", "Amount"]) {
+  for (const name of ["Date", "Payee", "Category", "Amount"]) {
     const cell = element("th", name);
     cell.scope = "col";
     headings.append(cell);
@@ -16,6 +16,7 @@ function previewTable(review: ImportReview): HTMLTableElement {
     rows.insertRow().append(
       element("td", item.date),
       element("td", item.payee),
+      element("td", item.category || "Uncategorised"),
       element("td", formatMoney(item.amountMinor, review.currency), "amount"),
     );
   }
