@@ -1,11 +1,24 @@
-// Runs sandboxed with contextIsolation on. It exposes exactly the typed bridge
-// and nothing else: no ipcRenderer, no Node.
 import { contextBridge, ipcRenderer } from "electron";
-import { channels, type ElectronBridge } from "./bridge";
+import { channels } from "../contracts/channels";
+import type { LedgerApi } from "../contracts/ledger";
 
-const bridge: ElectronBridge = {
-  greet: (name) => ipcRenderer.invoke(channels.greet, name),
-  platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
+async function invoke<Operation extends keyof LedgerApi>(
+  operation: Operation,
+  ...args: Parameters<LedgerApi[Operation]>
+): Promise<Awaited<ReturnType<LedgerApi[Operation]>>> {
+  try {
+    return await ipcRenderer.invoke(channels[operation], ...args) as Awaited<ReturnType<LedgerApi[Operation]>>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The ledger is unavailable.";
+    throw new Error(message.replace(/^Error invoking remote method '[^']+': Error: /, ""), { cause: error });
+  }
+}
+
+const bridge: LedgerApi = {
+  loadLedger: () => invoke("loadLedger"),
+  saveTransaction: (input) => invoke("saveTransaction", input),
+  deleteTransaction: (id) => invoke("deleteTransaction", id),
+  setCurrency: (currency) => invoke("setCurrency", currency),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

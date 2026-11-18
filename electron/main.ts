@@ -1,30 +1,22 @@
-// The main process: the "backend" of this app, the way Rust is in the Tauri
-// template. It answers the bridge's IPC calls. The greeting is implemented
-// here on its own, not imported from contracts/, so the real-shell suite
-// (tests/e2e) is what holds it to the contract.
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
-import { channels, type PlatformInfo } from "./bridge";
+import { pathToFileURL } from "node:url";
+import { createLedgerApi } from "../application/ledger";
+import { currencyForLocale } from "../domain/money";
+import { registerLedgerIpc } from "./ipc";
+import { FileLedgerStore, LEDGER_FILENAME } from "./store/file-ledger";
 
-function greet(name: string): string {
-  return `Hello, ${name}! You've been greeted from the main process!`;
-}
-
-function platformInfo(): PlatformInfo {
-  return {
-    os: process.platform,
-    arch: process.arch,
-    electron: process.versions.electron,
-    packaged: app.isPackaged,
-  };
-}
+const INITIAL_WINDOW = { width: 1080, height: 760, minWidth: 680, minHeight: 500 };
+const rendererFile = join(import.meta.dirname, "../renderer/index.html");
+const devUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
+const rendererUrl = devUrl ? new URL(devUrl).href : pathToFileURL(rendererFile).href;
 
 function createWindow(): void {
-  const win = new BrowserWindow({
-    width: 1024,
-    height: 700,
+  const window = new BrowserWindow({
+    ...INITIAL_WINDOW,
     title: "Tally",
     show: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(import.meta.dirname, "../preload/preload.cjs"),
       contextIsolation: true,
@@ -32,33 +24,35 @@ function createWindow(): void {
       sandbox: true,
     },
   });
-  win.once("ready-to-show", () => win.show());
-  // Links open in the system browser, never inside the app window.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://")) void shell.openExternal(url);
-    return { action: "deny" };
-  });
-
-  const devUrl = process.env.ELECTRON_RENDERER_URL;
-  if (!app.isPackaged && devUrl) void win.loadURL(devUrl);
-  else void win.loadFile(join(import.meta.dirname, "../renderer/index.html"));
+  window.once("ready-to-show", () => window.show());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  if (devUrl) void window.loadURL(rendererUrl);
+  else void window.loadFile(rendererFile);
 }
 
 function start(): void {
-  ipcMain.handle(channels.greet, (_e, name: unknown) => greet(String(name)));
-  ipcMain.handle(channels.platformInfo, () => platformInfo());
+  const store = new FileLedgerStore(join(app.getPath("userData"), LEDGER_FILENAME), currencyForLocale(app.getLocale()));
+  registerLedgerIpc(createLedgerApi(store), rendererUrl);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 }
 
-// A main process that cannot start has nothing to show the error in: log it
-// and exit non-zero so the real-shell suite and the installer test both fail.
-app.whenReady().then(start).catch((error: unknown) => {
-  console.error(error);
-  app.exit(1);
-});
+if (app.requestSingleInstanceLock()) {
+  app.on("second-instance", () => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (window?.isMinimized()) window.restore();
+    window?.focus();
+  });
+  app.whenReady().then(start).catch((error: unknown) => {
+    console.error(error);
+    app.exit(1);
+  });
+} else {
+  app.quit();
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
