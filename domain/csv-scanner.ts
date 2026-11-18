@@ -14,6 +14,7 @@ class CsvScanner {
   private readonly records: CsvRecord[] = [];
   private cells: string[] = [];
   private field = "";
+  private unquotedText = false;
   private state: FieldState = "unquoted";
   private quotedRecord = false;
   private issue?: string;
@@ -52,7 +53,7 @@ class CsvScanner {
         return true;
       }
       this.state = "closed";
-    } else if (this.state === "unquoted" && !this.field.trim()) {
+    } else if (this.state === "unquoted" && !this.unquotedText) {
       this.field = "";
       this.state = "quoted";
       this.quotedRecord = true;
@@ -63,8 +64,12 @@ class CsvScanner {
   }
 
   private readText(character: string): void {
-    if (this.state !== "closed") this.field += character;
-    else if (character.trim()) this.issue ??= "Unexpected text after a closing quote.";
+    if (this.state === "closed") {
+      if (character.trim()) this.issue ??= "Unexpected text after a closing quote.";
+      return;
+    }
+    this.field += character;
+    this.unquotedText ||= this.state === "unquoted" && Boolean(character.trim());
   }
 
   private readLineBreak(newline: string): void {
@@ -81,6 +86,7 @@ class CsvScanner {
       this.issue ??= "The row has more than " + MAXIMUM_CSV_COLUMNS + " columns.";
     } else this.cells.push(this.field);
     this.field = "";
+    this.unquotedText = false;
     this.state = "unquoted";
   }
 

@@ -18,6 +18,9 @@ const HEADER_ALIASES = {
   debit: ["debit", "debits", "withdrawal", "withdrawals", "money out", "paid out", "debit amount"],
   credit: ["credit", "credits", "deposit", "deposits", "money in", "paid in", "credit amount"],
 } as const;
+type HeaderKind = keyof typeof HEADER_ALIASES;
+const HEADER_KINDS = Object.keys(HEADER_ALIASES) as HeaderKind[];
+const CURRENCY_SUFFIX = /^[a-z]{3}$/;
 
 export interface CsvDocument {
   readonly delimiter: CsvDelimiter;
@@ -38,12 +41,25 @@ function normalizedHeader(label: string): string {
   return label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
-function matchColumn(columns: readonly string[], target: keyof typeof HEADER_ALIASES): number {
+function matchesAlias(label: string, alias: string): boolean {
+  return label === alias || (label.startsWith(alias + " ") && CURRENCY_SUFFIX.test(label.slice(alias.length + 1)));
+}
+
+function matchColumn(columns: readonly string[], target: HeaderKind): number {
   const aliases: readonly string[] = HEADER_ALIASES[target];
   return columns.findIndex((raw) => {
     const label = normalizedHeader(raw);
-    return aliases.some((alias) => label === alias || new RegExp("^" + alias + " [a-z]{3}$").test(label));
+    return aliases.some((alias) => matchesAlias(label, alias));
   });
+}
+
+function headerLayout(columns: readonly string[]): string {
+  const labels = columns.map(normalizedHeader);
+  const fields = labels.map((label) => HEADER_KINDS.find((kind) =>
+    HEADER_ALIASES[kind].some((alias) => matchesAlias(label, alias))) ?? null);
+  const knownAmount = fields.includes("signed") || (fields.includes("debit") && fields.includes("credit"));
+  const knownLayout = fields.includes("date") && fields.includes("payee") && knownAmount;
+  return JSON.stringify(knownLayout ? fields : labels);
 }
 
 function suggest(columns: readonly string[]): CsvMapping {
@@ -63,8 +79,7 @@ function suggest(columns: readonly string[]): CsvMapping {
 function scoreHeader(sample: readonly CsvRecord[], offset: number): number {
   const header = sample[offset];
   if (header.issue || header.cells.length < 2 || header.cells.some((cell) => GENERIC_DATE.test(cell.trim()))) return -1;
-  const aliases = (Object.keys(HEADER_ALIASES) as (keyof typeof HEADER_ALIASES)[])
-    .filter((kind) => matchColumn(header.cells, kind) >= 0).length;
+  const aliases = HEADER_KINDS.filter((kind) => matchColumn(header.cells, kind) >= 0).length;
   const textColumns = header.cells.filter((cell) => LETTER.test(cell)).length;
   if (!aliases && textColumns < 2) return -1;
   const matches = sample.slice(offset + 1, offset + 1 + NEXT_RECORDS)
@@ -81,7 +96,7 @@ function detectHeader(contents: string): HeaderCandidate {
     for (const [offset, record] of sample.entries()) {
       const score = scoreHeader(sample, offset);
       if (score < 0) continue;
-      const layout = JSON.stringify(record.cells.map(normalizedHeader));
+      const layout = headerLayout(record.cells);
       const first = firstByLayout.get(layout) ?? record;
       firstByLayout.set(layout, first);
       if (best === undefined || score > best.score) best = { delimiter, record: first, score };

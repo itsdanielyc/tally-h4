@@ -41,10 +41,10 @@ test("previews mapped debit and credit rows, reports rejections and skips reimpo
   await expect(page.getByRole("table", { name: "Transactions" }).getByRole("row")).toHaveCount(3);
 });
 
-test("editing an imported amount retains the original multiline payee", async ({ page }) => {
+test("editing an imported amount retains multiline payee and category text", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Import CSV" }).click();
-  await pickFile(page, 'Statement\r\nDate,Payee,Amount\r\n2026-11-18,"Market\r\nAnnex",-2\r\n');
+  await pickFile(page, 'Statement\r\nDate,Payee,Amount,Category,Note,Tally Currency\r\n2026-11-18,"Market\r\nAnnex",-2,"Food\r\nMarket","Receipt\r\nPaid",USD\r\n');
   await page.getByRole("button", { name: "Preview import" }).click();
   await page.getByRole("button", { name: "Import 1 transaction", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Imported 1 transaction");
@@ -56,4 +56,6 @@ test("editing an imported amount retains the original multiline payee", async ({
   await expect(editor).toBeHidden();
   const row = page.getByRole("row").filter({ hasText: "Market" });
   expect(await row.locator(".payee").textContent()).toBe("Market\r\nAnnex");
+  expect(await row.locator(".category").textContent()).toBe("Food\r\nMarket");
+  expect(await row.locator(".row-note").textContent()).toBe("Receipt\r\nPaid");
 });

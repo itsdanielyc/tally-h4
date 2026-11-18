@@ -6,6 +6,7 @@ const DATE_PARTS = /^(\d{1,4})([./-])(\d{1,2})\2(\d{1,4})$/;
 const RECENT_YEAR_PIVOT = 70;
 const THOUSANDS_DIGITS = 3;
 const THOUSANDS_GROUPS = /^\d{1,3}([,. ])\d{3}(?:\1\d{3})*$/;
+const GROUP_PREFIX = /^\d{1,3}$/;
 const WHOLE_DIGITS = /^\d+$/;
 export type DecimalMark = "." | ",";
 
@@ -34,7 +35,7 @@ function decimalOffset(value: string, currency: string, hint?: DecimalMark): num
   const mark = value.charAt(last);
   if (value.indexOf(mark) !== last) return -1;
   const remaining = value.length - last - 1;
-  if (remaining !== THOUSANDS_DIGITS) return last;
+  if (remaining !== THOUSANDS_DIGITS || !GROUP_PREFIX.test(value.slice(0, last))) return last;
   if (hint !== undefined) return hint === mark ? last : -1;
   if (currencyDigits(currency) === THOUSANDS_DIGITS) {
     throw new Error("Ambiguous amount separator. This column needs a clear decimal or grouping convention.");
@@ -55,7 +56,10 @@ function readAmount(raw: string, currency: string, hint?: DecimalMark): { amount
   }
   const amountMinor = parseMinorAmount((negative ? "-" : "") + integral.replace(/[,. ]/g, "") + fraction, currency);
   const mark = unsigned.charAt(decimal);
-  return { amountMinor, decimal: mark === "." || mark === "," ? mark : undefined };
+  if (mark === "." || mark === ",") return { amountMinor, decimal: mark };
+  const grouping = THOUSANDS_GROUPS.exec(integral)?.[1];
+  const convention = grouping === "," ? "." : grouping === "." ? "," : undefined;
+  return { amountMinor, decimal: convention };
 }
 
 /** Uses the common convention of clear amounts in this column to interpret ambiguous separators. */

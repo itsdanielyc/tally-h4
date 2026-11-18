@@ -12,7 +12,7 @@ function localToday(): string {
 
 function draft(form: HTMLFormElement, original: FormData, currency: string, previous?: Transaction): TransactionInput {
   const fields = new FormData(form);
-  const preserving = (name: "payee" | "note"): string => {
+  const preserving = (name: "payee" | "category" | "note"): string => {
     const value = formText(fields, name);
     return previous && value === formText(original, name) ? previous[name] : value;
   };
@@ -21,7 +21,7 @@ function draft(form: HTMLFormElement, original: FormData, currency: string, prev
     date: formText(fields, "date"),
     payee: preserving("payee"),
     amountMinor: parseMinorAmount(formText(fields, "amount"), currency),
-    category: formText(fields, "category"),
+    category: preserving("category"),
     note: preserving("note"),
   };
 }

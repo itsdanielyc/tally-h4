@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseCsvDocument } from "../../domain/csv-document";
+import { scanCsv } from "../../domain/csv-scanner";
 import { prepareImport } from "../../domain/import";
 import { newLedger } from "../../domain/ledger";
 
@@ -53,9 +54,9 @@ describe("bank CSV parsing", () => {
     expect(result.review.rejections.map(({ line }) => line)).toEqual([3, 5]);
   });
 
-  it("keeps records before a repeated header with a cleaner run of rows", () => {
+  it.each(["Date,Payee,Amount", "Transaction Date,Details,Net Amount"])("keeps records before repeated header %s", (header) => {
     const document = parseCsvDocument([
-      "Date,Payee,Amount", "2026-11-18,Before,-1.00", "broken", "Date,Payee,Amount",
+      "Date,Payee,Amount", "2026-11-18,Before,-1.00", "broken", header,
       ...Array.from({ length: 5 }, (_, index) => "2026-11-19,After " + index + ",-3"),
     ].join("\n"));
     expect(document.headerLine).toBe(1);
@@ -72,6 +73,12 @@ describe("bank CSV parsing", () => {
     const ambiguous = parseCsvDocument('Date,Payee,Amount\n2026-11-19,B,"2,345"');
     const reviewed = prepareImport(ambiguous, ambiguous.suggested, newLedger("KWD"));
     expect(reviewed.review.rejections[0]?.reason).toContain("Ambiguous");
+    const decimal = parseCsvDocument("Date,Payee,Amount\n2026-11-18,A,1234.567\n2026-11-19,B,2.345");
+    expect(prepareImport(decimal, decimal.suggested, newLedger("KWD")).accepted.map(({ amountMinor }) => amountMinor))
+      .toEqual([1_234_567, 2345]);
+    const grouped = parseCsvDocument('Date,Payee,Amount\n2026-11-18,A,"1,234,567"\n2026-11-19,B,"2,345"');
+    expect(prepareImport(grouped, grouped.suggested, newLedger("KWD")).accepted.map(({ amountMinor }) => amountMinor))
+      .toEqual([1_234_567_000, 2_345_000]);
   });
 
   it("bounds the number of materialized CSV records and columns", () => {
@@ -80,5 +87,14 @@ describe("bank CSV parsing", () => {
     const document = parseCsvDocument(header + ",".repeat(257) + "\n2026-11-18,A,2");
     const prepared = prepareImport(document, document.suggested, newLedger("USD"));
     expect(prepared.review.rejections).toMatchObject([{ line: 2, reason: expect.stringContaining("256 columns") }]);
+  });
+
+  it("scans a long malformed field without retrimming it per stray quote", () => {
+    const repeated = 140_000;
+    const started = performance.now();
+    const records = scanCsv("X" + " ".repeat(repeated) + '"'.repeat(repeated) + "\nvalid,next", ",");
+    expect(performance.now() - started).toBeLessThan(3_000);
+    expect(records[0].issue).toContain("Quote appears");
+    expect(records[1]).toMatchObject({ line: 2, cells: ["valid", "next"] });
   });
 });
