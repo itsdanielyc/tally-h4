@@ -4,11 +4,11 @@ permissions:
   contents: read
 jobs:
   apple-silicon-checkpoints:
-    runs-on: macos-26
-    timeout-minutes: 18
+    runs-on: macos-latest
+    timeout-minutes: 24
     env:
       CI: "1"
-      CHECKPOINTS: "7943a1d05ce5db2ffe2decadf82282420fd0cdae 653fc0b4db5196029987826f5d09aa36512c2ef2 fc14beee1c4a4f0f40b3148122418aa10dafe88b"
+      CHECKPOINTS: "7943a1d05ce5db2ffe2decadf82282420fd0cdae 653fc0b4db5196029987826f5d09aa36512c2ef2 fc14beee1c4a4f0f40b3148122418aa10dafe88b 44bcaba17c3000b0ffe87d2acbb4a7afcf0b8c2e 3311aae28d2c77262bc76c7cd10daae0bdd12e15"
     steps:
       - uses: actions/checkout@v7
         with:
