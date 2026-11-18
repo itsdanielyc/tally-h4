@@ -1,5 +1,5 @@
 import type { Transaction, TransactionInput } from "../contracts/ledger";
-import { currencyDigits, parseMinorAmount } from "../domain/money";
+import { minorAmountText, parseMinorAmount } from "../domain/money";
 import { transactionLimits } from "../domain/transactions";
 import { element, formText, required } from "./dom";
 import type { ViewContext } from "./view-context";
@@ -20,13 +20,6 @@ function draft(form: HTMLFormElement, currency: string, previous?: Transaction):
     category: formText(fields, "category"),
     note: formText(fields, "note"),
   };
-}
-
-function inputAmount(amountMinor: number, currency: string): string {
-  const digits = currencyDigits(currency);
-  const absolute = BigInt(Math.abs(amountMinor)).toString().padStart(digits + 1, "0");
-  const decimal = digits ? absolute.slice(0, -digits) + "." + absolute.slice(-digits) : absolute;
-  return amountMinor < 0 ? "-" + decimal : decimal;
 }
 
 function bindEditor(form: HTMLFormElement, dialog: HTMLDialogElement, context: ViewContext, previous?: Transaction): void {
@@ -88,7 +81,7 @@ export function openTransactionEditor(context: ViewContext, previous?: Transacti
   required(dialog, "#editor-title").textContent = previous ? "Edit transaction" : "Add transaction";
   required<HTMLInputElement>(form, "[name=date]").value = previous?.date ?? localToday();
   const amount = required<HTMLInputElement>(form, "[name=amount]");
-  amount.value = previous ? inputAmount(previous.amountMinor, context.ledger.currency) : "";
+  amount.value = previous ? minorAmountText(previous.amountMinor, context.ledger.currency) : "";
   amount.placeholder = "0.00 " + context.ledger.currency;
   for (const field of ["payee", "category", "note"] as const) {
     const input = required<HTMLInputElement | HTMLTextAreaElement>(form, "[name=" + field + "]");

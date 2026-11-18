@@ -1,6 +1,8 @@
 import type { Ledger, LedgerApi, Transaction } from "../contracts/ledger";
+import { setBudget } from "../domain/budgets";
 import { resolveTransactionCategory } from "../domain/categories";
 import { validateCurrency } from "../domain/money";
+import { calculateMonth } from "../domain/month";
 import { newestFirst, validateTransaction } from "../domain/transactions";
 import { createImportCommands, type PickCsv } from "./import-commands";
 import { createCategoryCommands } from "./category-commands";
@@ -54,8 +56,10 @@ export function createLedgerApi(
     setCurrency: (value) => session.change((ledger) => {
       const currency = validateCurrency(value);
       if (currency === ledger.currency) return committed(ledger);
-      if (ledger.transactions.length) throw new Error("Change currency while the ledger is empty.");
+      if (ledger.transactions.length || ledger.budgets.length) throw new Error("Change currency while the ledger is empty and has no budgets.");
       return committed({ ...ledger, currency });
     }),
+    getMonth: (month) => session.read((ledger) => calculateMonth(ledger, month)),
+    setBudget: (input) => session.change((ledger) => committed(setBudget(ledger, input))),
   };
 }

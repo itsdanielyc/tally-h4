@@ -3,12 +3,14 @@ import { connectBackend, type Backend } from "./api";
 import { renderCategories } from "./categories-view";
 import { element, required } from "./dom";
 import { renderImport } from "./import-view";
+import { renderMonth } from "./month-view";
 import { renderSettings } from "./settings-view";
 import { renderTransactions } from "./transactions-view";
 import type { ViewContext } from "./view-context";
 
 const renderScreen = {
-  transactions: renderTransactions, import: renderImport, categories: renderCategories, settings: renderSettings,
+  transactions: renderTransactions, import: renderImport, categories: renderCategories,
+  month: renderMonth, settings: renderSettings,
 };
 type Screen = keyof typeof renderScreen;
 

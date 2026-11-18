@@ -13,14 +13,14 @@ export function renderSettings(parent: HTMLElement, context: ViewContext): void 
   const select = element("select");
   for (const currency of currencies) select.add(new Option(currency, currency));
   select.value = context.ledger.currency;
-  const locked = context.ledger.transactions.length > 0;
+  const locked = context.ledger.transactions.length > 0 || context.ledger.budgets.length > 0;
   select.disabled = locked;
   label.append(select);
   const save = element("button", "Save currency", "primary");
   save.disabled = locked;
   save.type = "submit";
   form.append(label);
-  if (locked) form.append(element("p", "Change currency while the ledger is empty.", "hint"));
+  if (locked) form.append(element("p", "Change currency while the ledger is empty and has no budgets.", "hint"));
   form.append(save);
   form.addEventListener("submit", (event) => {
     event.preventDefault();

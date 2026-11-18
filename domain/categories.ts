@@ -1,5 +1,6 @@
 import type { CategoryChange, PayeeRule, PayeeRuleInput } from "../contracts/categories";
 import type { Ledger } from "../contracts/ledger";
+import { moveCategoryBudget } from "./budgets";
 import { isRecord, transactionLimits } from "./transactions";
 
 function folded(text: string): string {
@@ -44,6 +45,7 @@ function reassignCategory(ledger: Ledger, from: string, to: string, categories: 
   return {
     ...ledger,
     categories,
+    budgets: moveCategoryBudget(ledger.budgets, from, to),
     transactions: ledger.transactions.map((entry) => entry.category === from ? { ...entry, category: to } : entry),
     rules: ledger.rules.flatMap((rule) => {
       if (rule.category !== from) return [rule];

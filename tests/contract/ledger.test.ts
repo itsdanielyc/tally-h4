@@ -11,7 +11,7 @@ it("keeps the native ledger and browser mock aligned through CRUD and currency s
   try {
     const mock = createMock("USD", () => "test-record");
     const native = createLedgerApi(new FileLedgerStore(join(profile, "ledger.json"), "USD"), () => "test-record");
-    const empty = { transactions: [], categories: [], rules: [] };
+    const empty = { transactions: [], categories: [], rules: [], budgets: [] };
     for (const api of [mock, native]) {
       await expect(api.loadLedger()).resolves.toEqual({ currency: "USD", ...empty });
       await expect(api.setCurrency("GBP")).resolves.toEqual({ currency: "GBP", ...empty });
@@ -59,6 +59,33 @@ it("returns the same source, review and commit result for mock and native CSV co
     await expect(native.confirmImport(request)).resolves.toEqual(receipt);
     expect(receipt.ledger.transactions).toMatchObject([{ category: "Groceries" }]);
     await expect(native.previewImport(request)).resolves.toMatchObject({ acceptedCount: 0, duplicateCount: 1 });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("saves recurring budgets and reports identical exact totals on both adapters", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tally-budget-contract-"));
+  try {
+    const file = join(directory, "ledger.json");
+    const mock = createMock("USD", () => "test-record");
+    const native = createLedgerApi(new FileLedgerStore(file, "USD"), () => "test-record");
+    for (const api of [mock, native]) {
+      await api.addCategory("Food");
+      await api.setBudget({ category: "Food", amountMinor: 2000 });
+      await expect(api.setCurrency("GBP")).rejects.toThrow("no budgets");
+      await api.addCategory("Travel");
+      await api.setBudget({ category: "Travel", amountMinor: 500 });
+      await api.saveTransaction({ date: "2026-11-18", payee: "Market", amountMinor: -2900, category: "Food" });
+      await api.mergeCategory({ from: "Travel", to: "Food" });
+    }
+    const summary = await mock.getMonth("2026-11");
+    expect(summary).toMatchObject({
+      spendingMinor: 2900n,
+      categories: [{ category: "Food", budgetMinor: 2500, remainingMinor: -400n }],
+    });
+    await expect(native.getMonth("2026-11")).resolves.toEqual(summary);
+    await expect(createLedgerApi(new FileLedgerStore(file, "EUR")).getMonth("2026-11")).resolves.toEqual(summary);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
