@@ -15,4 +15,6 @@ export const channels = {
   addPayeeRule: "tally:add-payee-rule",
   deletePayeeRule: "tally:delete-payee-rule",
   applyPayeeRules: "tally:apply-payee-rules",
+  getMonth: "tally:get-month",
+  setBudget: "tally:set-budget",
 } satisfies Record<keyof LedgerApi, string>;

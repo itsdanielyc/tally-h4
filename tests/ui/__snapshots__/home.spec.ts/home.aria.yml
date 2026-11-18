@@ -4,6 +4,7 @@
     - button "Transactions"
     - button "Import CSV"
     - button "Categories"
+    - button "Monthly summary"
     - button "Settings"
   - text: On this device mock
 - main:

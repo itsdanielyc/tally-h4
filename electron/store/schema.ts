@@ -1,11 +1,14 @@
 import type { Ledger, Transaction } from "../../contracts/ledger";
 import type { PayeeRule } from "../../contracts/categories";
+import type { CategoryBudget } from "../../contracts/month";
+import { validateBudget } from "../../domain/budgets";
 import { validateCategoryName, validateRule } from "../../domain/categories";
 import { validateCurrency } from "../../domain/money";
 import { isRecord, validateTransaction } from "../../domain/transactions";
 
-const CURRENT_SCHEMA = 2;
-const LEGACY_SCHEMAS = [0, 1];
+const CATEGORY_SCHEMA = 2;
+const CURRENT_SCHEMA = 3;
+const LEGACY_SCHEMAS = [0, 1, CATEGORY_SCHEMA];
 
 function decodeTransaction(value: unknown): Transaction {
   if (!isRecord(value) || typeof value.id !== "string" || !value.id) {
@@ -31,7 +34,7 @@ export function decodeLedger(document: unknown): Ledger {
     throw new Error("The ledger contains duplicate transaction IDs.");
   }
   const { categories, rules } = decodeCategoryState(document, transactions);
-  return { currency, transactions, categories, rules };
+  return { currency, transactions, categories, rules, budgets: decodeBudgets(document, categories) };
 }
 
 function decodeRule(value: unknown, categories: readonly string[]): PayeeRule {
@@ -44,7 +47,7 @@ function decodeRule(value: unknown, categories: readonly string[]): PayeeRule {
 function decodeCategoryState(
   document: Record<string, unknown>, transactions: readonly Transaction[],
 ): Pick<Ledger, "categories" | "rules"> {
-  if (document.schema !== CURRENT_SCHEMA) {
+  if (document.schema !== CATEGORY_SCHEMA && document.schema !== CURRENT_SCHEMA) {
     return { categories: [...new Set(transactions.map(({ category }) => category).filter(Boolean))], rules: [] };
   }
   if (!Array.isArray(document.categories) || !Array.isArray(document.rules)) {
@@ -60,10 +63,22 @@ function decodeCategoryState(
   return { categories, rules };
 }
 
+function decodeBudgets(document: Record<string, unknown>, categories: readonly string[]): CategoryBudget[] {
+  if (document.schema !== CURRENT_SCHEMA) return [];
+  if (!Array.isArray(document.budgets)) throw new Error("The ledger's budgets are missing.");
+  const seen = new Set<string>();
+  return document.budgets.map((value: unknown) => {
+    const { category, amountMinor } = validateBudget(value, categories);
+    if (seen.has(category) || amountMinor === null) throw new Error("The ledger contains an invalid category budget.");
+    seen.add(category);
+    return { category, amountMinor };
+  });
+}
+
 /** Encodes the current data model as one versioned JSON document. */
 export function encodeLedger(ledger: Ledger): string {
   return JSON.stringify({
     schema: CURRENT_SCHEMA, settings: { currency: ledger.currency }, transactions: ledger.transactions,
-    categories: ledger.categories, rules: ledger.rules,
+    categories: ledger.categories, rules: ledger.rules, budgets: ledger.budgets,
   }) + "\n";
 }

@@ -29,6 +29,8 @@ const bridge: LedgerApi = {
   addPayeeRule: (rule) => invoke("addPayeeRule", rule),
   deletePayeeRule: (id) => invoke("deletePayeeRule", id),
   applyPayeeRules: () => invoke("applyPayeeRules"),
+  getMonth: (month) => invoke("getMonth", month),
+  setBudget: (budget) => invoke("setBudget", budget),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

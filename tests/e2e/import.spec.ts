@@ -24,6 +24,8 @@ test("imports through the native file port and reports the rows it rejected", as
     await expect(page.getByRole("status")).toContainText("Imported 1 transaction");
     const ledger = await page.evaluate(() => window.electronBridge?.loadLedger());
     expect(ledger?.transactions).toMatchObject([{ payee: "Market", date: "2026-11-18", amountMinor: -1250 }]);
+    const summary = await page.evaluate(() => window.electronBridge?.getMonth("2026-11"));
+    expect(summary).toMatchObject({ spendingMinor: 1250n, incomeMinor: 0n, netMinor: -1250n });
   } finally {
     await application?.close();
     await rm(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });

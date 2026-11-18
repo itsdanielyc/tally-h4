@@ -71,3 +71,11 @@ export function formatMoney(amountMinor: number | bigint, currency: string): str
   const value = parts.map((part) => part.type === "fraction" ? fraction : part.value).join("");
   return amount < 0n ? MINUS_SIGN + value : value;
 }
+
+/** Produces locale-independent decimal text for editors and CSV exchange. */
+export function minorAmountText(amountMinor: number, currency: string): string {
+  const digits = currencyDigits(currency);
+  const absolute = Math.abs(amountMinor).toString().padStart(digits + 1, "0");
+  const decimal = digits ? absolute.slice(0, -digits) + "." + absolute.slice(-digits) : absolute;
+  return amountMinor < 0 ? "-" + decimal : decimal;
+}

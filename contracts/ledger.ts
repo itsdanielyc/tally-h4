@@ -1,5 +1,6 @@
 import type { ImportReceipt, ImportRequest, ImportReview, ImportSource } from "./import";
 import type { CategoryChange, PayeeRule, PayeeRuleInput } from "./categories";
+import type { BudgetInput, CategoryBudget, MonthSummary } from "./month";
 
 /** The values required to record a transaction plus its optional details. */
 export interface TransactionInput {
@@ -27,6 +28,7 @@ export interface Ledger {
   readonly transactions: readonly Transaction[];
   readonly categories: readonly string[];
   readonly rules: readonly PayeeRule[];
+  readonly budgets: readonly CategoryBudget[];
 }
 
 /** Operations shared by the desktop bridge and the browser's in-memory backend. */
@@ -45,4 +47,6 @@ export interface LedgerApi {
   addPayeeRule(this: void, rule: PayeeRuleInput): Promise<Ledger>;
   deletePayeeRule(this: void, id: string): Promise<Ledger>;
   applyPayeeRules(this: void): Promise<Ledger>;
+  getMonth(this: void, month: string): Promise<MonthSummary>;
+  setBudget(this: void, budget: BudgetInput): Promise<Ledger>;
 }
