@@ -20,7 +20,16 @@ is never rounded up to "tested"; anything not listed here is unverified.
 | 2026-11-18 | L0-L3, L6 | Slice 5. Inclusive filters, native export, exact CSV round trip, and one-shot delete, merge and import undo. | L0-L2 Linux x64. L3 and L6 Windows x64, macOS arm64, Linux x64. | [CI 44366480254](https://github.com/itsdanielyc/tally-h4/actions/runs/44366480254) unit and the Windows/Linux real-shell jobs green. [Apple silicon 44366645346](https://github.com/itsdanielyc/tally-h4/actions/runs/44366645346) checkpoint 5 at 3311aae28d2c77262bc76c7cd10daae0bdd12e15. Local mutation failures are in [PR #6](https://github.com/itsdanielyc/tally-h4/pull/6). |
 | 2026-11-18 | L4-L5 | Slice 5. Browser feature checks and three visual tiers. | Windows x64, macOS arm64, Linux x64 | [Capture 44366461116](https://github.com/itsdanielyc/tally-h4/actions/runs/44366461116) verified the new baselines on Windows and Linux. [Apple silicon 44366645346](https://github.com/itsdanielyc/tally-h4/actions/runs/44366645346) verified the same checkpoint on macOS. Reviewed the three PNGs. |
 | 2026-11-18 | Independent review | Release reader reviewed `3311aae` and rechecked the first fixes at `1dda764`. Nine code findings and four follow-up variants received regression checks or fixes. The pixel-baseline finding was resolved with the captured product baselines above. | Windows x64 local regression runs | [Release PR #7](https://github.com/itsdanielyc/tally-h4/pull/7). Reds included missing CSV lines, header 4 instead of 1, an amount off by 1,000, truncated imported text, stale or lost Undo, stale month totals and a malformed field taking 6.8 seconds. The restored local suites passed. |
+| 2026-11-18 | L0–L6 | The exact 0.1.0 candidate `54bb8368e2ed0ee49b4956f479458fedde528106` passes lint, the domain and contract suites, filesystem integration, all three visual checks, and Electron journeys. The independent reader confirmed all four follow-up cases at this commit. | Linux x64 for L0–L2. Windows x64, macOS arm64, Linux x64 for L3–L6. | [CI 44370535607](https://github.com/itsdanielyc/tally-h4/actions/runs/44370535607), all jobs green. Reviewed the three real-shell screenshots. |
+| 2026-11-18 | L7 | Exact candidate installers package, install, launch and clean up. The downloaded NSIS, DMG, DEB and AppImage match their SHA-256 manifests. | Windows x64, macOS arm64, Linux x64 | [Installers 44370526856](https://github.com/itsdanielyc/tally-h4/actions/runs/44370526856) at `54bb8368e2ed0ee49b4956f479458fedde528106`, all three jobs green. |
+| 2026-11-18 | Pre-tag gate | The gate refused `8884425` without matching installer evidence and accepted `54bb836` with it. The version check also rejected a mismatched local manifest and the checksum helper rejected a missing bundle. | Hosted Linux x64 gate, local Windows x64 helper checks | [Expected rejection 44372690696](https://github.com/itsdanielyc/tally-h4/actions/runs/44372690696), “No green installers run exists.” [Accepted candidate gate 44376918859](https://github.com/itsdanielyc/tally-h4/actions/runs/44376918859). |
+
+## Pre-tag target
+
+The 0.1.0 tag target on `main` is `54bb8368e2ed0ee49b4956f479458fedde528106`.
 
 ## Unverified
 
-- The final 0.1.0 candidate and its installer runs are pending slice 6.
+- The macOS repeat in the pre-tag dispatch is waiting for a hosted runner.
+- Real power-loss fault injection, manual operating-system file picker behavior, and assistive-technology use were outside automated coverage.
+- Installation from published assets belongs to the post-tag workflow.

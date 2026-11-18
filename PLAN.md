@@ -9,7 +9,7 @@
 | 3 | Categories and rules | Rule precedence, category merge and uncategorisation pass unit and contract tests. Reopen preserves categories and rules, and the browser proves category assignment and rule application. | L0–L5 | solo | done |
 | 4 | Monthly summary and budgets | Exact aggregation tests cover month boundaries, signed totals and remaining/over budget. The contract saves budgets, and browser tests navigate months and reconcile the displayed amounts. | L0–L2, L4–L5 | solo | done |
 | 5 | Find, export, undo | Tests prove inclusive filters, lossless CSV round trip, and atomic one-shot undo for delete, merge and import. Browser tests exercise filters and undo, and real Electron exports a filtered CSV through the native file port on Tier 1. | L0–L6 | solo | done |
-| 6 | Release readiness | Version and changelog are ready, the post-slice review is complete, and the unsigned pre-tag workflow produces and smoke-tests every Tier 1 bundle. The release commit, CI and artifact evidence are recorded. | L0–L7 | solo | open |
+| 6 | Release readiness | Version and changelog are ready, the post-slice review is complete, and the pre-tag installers workflow produces and smoke-tests every unsigned Tier 1 bundle. The release commit, CI and artifact evidence are recorded. | L0–L7 | solo | done |
 
 ## Rulings
 
@@ -33,5 +33,6 @@
 - Slice 6. Ruling: Use unsigned packages per ADR 001 and run the release workflow by dispatch — proves the same bundle and smoke jobs before tagging — cost if wrong: signed distribution and tag publication need a separate run.
 - Slice 6. Ruling: Keep the seeded product version at 0.1.0 and check both package manifests — SLICES.md specifies the release number — cost if wrong: the manifests and changelog must change together.
 - Slice 6. Ruling: Use the standard `macos-latest` Apple silicon runner for installer proof — it previously built and launched the DMG, while `macos-26` jobs repeatedly waited without assignment — cost if wrong: macOS checks must run again on another Apple silicon image.
+- Slice 6. Ruling: Use `54bb8368e2ed0ee49b4956f479458fedde528106` as the tag target — hosted CI and the pre-tag installer gate prove that exact commit — cost if wrong: tagging a different commit requires new installer evidence.
 - Pipeline proof. Ruling: Use one isolated macOS Apple silicon workflow to verify the exact source commits for slices 1–5, alongside Linux and Windows jobs on those same commits — parallel macOS lanes repeatedly stayed queued — cost if wrong: platform-specific differences must be checked again in the final CI run.
 <!-- keel:end -->
